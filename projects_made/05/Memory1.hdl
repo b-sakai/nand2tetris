@@ -1,0 +1,46 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/05/Memory.hdl
+
+/**
+ * The complete address space of the Hack computer's memory,
+ * including RAM and memory-mapped I/O. 
+ * The chip facilitates read and write operations, as follows:
+ *     Read:  out(t) = Memory[address(t)](t)
+ *     Write: if load(t-1) then Memory[address(t-1)](t) = in(t-1)
+ * In words: the chip always outputs the value stored at the memory 
+ * location specified by address. If load==1, the in value is loaded 
+ * into the memory location specified by address. This value becomes 
+ * available through the out output from the next time step onward.
+ * Address space rules:
+ * Only the upper 16K+8K+1 words of the Memory chip are used. 
+ * Access to address>0x6000 is invalid. Access to any address in 
+ * the range 0x4000-0x5FFF results in accessing the screen memory 
+ * map. Access to address 0x6000 results in accessing the keyboard 
+ * memory map. The behavior in these addresses is described in the 
+ * Screen and Keyboard chip specifications given in the book.
+ */
+
+CHIP Memory {
+    IN in[16], load, address[15];
+    OUT out[16];
+
+    PARTS:
+    // Put your code here:
+    DMux4Way(in=load,sel=address[0..1],a=a,b=b,c=c,d=d);
+    DMux8Way(in=load,sel=address[0..2],a=aa,b=bb,c=cc,d=dd,e=ee,f=ff,g=gg,h=hh);
+    RAM16K(in=in, load=a, address=address[2..14],out=outa);
+    Screen(in=in, load=cc, address=address[3..14],out=outb);
+    DMux8Way(in=load,sel=addres[3..5],a=a1,b=b1,c=c1,d=d1,e=e1,f=f1,g=g1,h=h1);
+    DMux8Way(in=load,sel=addres[6..8],a=a2,b=b2,c=c2,d=d2,e=e2,f=f2,g=g2,h=h2);
+    DMux8Way(in=load,sel=addres[9..11],a=a3,b=b3,c=c3,d=d3,e=e3,f=f3,g=g3,h=h3);
+    DMux8Way(in=load,sel=addres[12..14],a=a4,b=b4,c=c4,d=d4,e=e4,f=f4,g=g4,h=h4);
+    AND(a=d,b=a1,out=a5);
+    AND(a=a2,b=a5,out=a6);
+    AND(a=a3,b=a6,out=a7);
+    AND(a=a4,b=a7,out=a8);
+    Keyboard(out=outc);
+    Mux16(a[0..15]=false,b=outc,sel=a8,out=outd);
+    Mux8Way16(a=outa,b[0..15]=false,c=outb,d=outd,e[0..15]=false,f[0..15]=false,g[0..15]=false,h[0..15]=false,sel=address[0..2],out=out);
+}

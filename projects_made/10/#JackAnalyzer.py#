@@ -1,0 +1,12 @@
+import sys
+import os
+print sys.argv[1][:-4]
+if os.path.isdir("/"+sys.argv):
+    
+fr=open(sys.argv[1], "r")
+fw=open(sys.argv[1][:-5] +"self.xml", "w")
+for line in fr:
+    fw.write(line)
+
+fr.close()
+fw.close()
