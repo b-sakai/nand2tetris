@@ -71,10 +71,6 @@ void Parser::advance() {
 }
 
 CommandType Parser::judgeCommandType(string aCommand) const {
-    cout << "----------" << endl;
-    cout << aCommand << endl;
-    cout << aCommand.size() << endl;
-    cout << "----------" << endl;
     CommandType ret;
     if (aCommand == "add" || aCommand == "sub" || aCommand == "neg" ||
         aCommand == "eq" || aCommand == "gt" || aCommand == "lt" ||

@@ -33,8 +33,9 @@ void writeTest() {
 
 int main() {
     // 読み込むファイルのパスを指定
-    string ifilename = "../07/StackArithmetic/StackTest/StackTestSimple.vm";
-    string ofilename = "./output/StackTest.asm";
+    string ifilename = "../07/StackArithmetic/StackTest/StackTest.vm";
+    //string ofilename = "./output/SimpleAdd.asm";
+    string ofilename = "../07/StackArithmetic/StackTest/StackTest.asm";
 
     Parser parser(ifilename);
     CodeWriter writer(ofilename);    
@@ -44,8 +45,6 @@ int main() {
             break;
         }
         string cmd = parser.command;
-        cout << parser.command << endl;
-        cout << "call writeArithmetic " << parser.commandType << endl;
         switch (parser.commandType) {
             case C_ARITHMETIC:
                 writer.writeArithmetic(cmd);

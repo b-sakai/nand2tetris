@@ -35,6 +35,7 @@ void CodeWriter::writeArithmetic(string command) {
         // AレジスタにSP-2の位置のアドレス値を格納        
         file << "@SP" << endl;
         file << "M=M-1" << endl;
+        file << "@SP" << endl;
         file << "A=M" << endl;
         // 算術を実行し、Mアドレスに値を格納
         if (command == "add") {
