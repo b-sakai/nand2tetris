@@ -91,8 +91,8 @@ def convert(line):
         
    
 
-fr=open("06/pong/Pong.asm","r")
-fw=open("06/pong/Pong1.hack","w")
+fr=open("06/add/Add.asm","r")
+fw=open("06/add/Add1.hack","w")
 minumber=16
 rom=0
 for line in fr:
