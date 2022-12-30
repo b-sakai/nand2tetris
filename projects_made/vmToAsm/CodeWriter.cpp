@@ -168,12 +168,13 @@ void CodeWriter::writePop(string command, string segment, int index) {
 // Methods For Program Flow and Function (chapter 8)
 // labelコマンドを行うアセンブリコードを書く
 void CodeWriter::writeLabel(string label) {
-    file << "(fr$" << label << ")" << endl;
+    file << "(" << label << ")" << endl;
 }
 
 // gotoコマンドを行うアセンブリコードを書く
 void CodeWriter::writeGoto(string label) {
-
+    file << "@" << label << endl;
+    file << "0;JMP" << endl;
 }
 
 // if-gotoコマンドを行うアセンブリコードを書く
@@ -182,7 +183,7 @@ void CodeWriter::writeIf(string label) {
     file << "@SP" << endl;
     file << "AM=M-1" << endl;
     file << "D=M" << endl;
-    file << "@fr$" << label << endl;
+    file << "@" << label << endl;
     file << "D;JNE" << endl;
 }
 

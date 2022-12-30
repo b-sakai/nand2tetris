@@ -22,9 +22,9 @@
 using namespace std;
 int main() {
     // 読み込むファイルのパスを指定
-    string ifilename = "../08/ProgramFlow/BasicLoop/BasicLoop.vm";
+    string ifilename = "../08/ProgramFlow/FibonacciSeries/FibonacciSeries.vm";
     //string ofilename = "./output/SimpleAdd.asm";
-    string ofilename = "../08/ProgramFlow/BasicLoop/BasicLoop.asm";
+    string ofilename = "../08/ProgramFlow/FibonacciSeries/FibonacciSeries.asm";
 
     Parser parser(ifilename);
     CodeWriter writer(ofilename);    
