@@ -1,4 +1,4 @@
-// .vmから.amに変換するプログラム（※7章の内容まで対応）
+// .vmから.amに変換するプログラム
 // コンピュータの理論と実装第7章
 // 実装の順番としては以下のように行う
 // 7.3.2 VMTranslater設計案
@@ -10,6 +10,8 @@
 // 7.1.1 add, sub, neg, eq, gt, lt, and, or, not -> 単純に変換すれば良い
 // 7.1.2 push constant x -> 単純に変換すれば良い
 // Stage 2: Memory Access
+// Chapter 8
+// Stage 3: Parser Module, CodeWriter Module
 #include <fstream>
 #include <iostream>
 #include <string>

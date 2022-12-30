@@ -79,6 +79,8 @@ CommandType Parser::judgeCommandType(string aCommand) const {
         ret = C_ARITHMETIC;
     } else if (aCommand == "push") {
         ret = C_PUSH;
+    } else if (aCommand == "pop") {
+        ret = C_POP;
     } else {
         cout << "should not called " << aCommand << endl;
     }

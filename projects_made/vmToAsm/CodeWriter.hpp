@@ -22,5 +22,7 @@ public:
     // 与えられた算術コマンドをアセンブリコードに変換し、それを書き込む
     void writeArithmetic(string command);
     // C_PUSH C_POPコマンドをアセンブリコードに変換し、それを書き込む
-    void writePushPop(string command, string segment, int index);
+    void writePush(string command, string segment, int index);
+    // C_POPコマンドをアセンブリコードに変換し、それを書き込む
+    void writePop(string command, string segment, int index);    
 };

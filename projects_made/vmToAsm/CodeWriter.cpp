@@ -80,16 +80,78 @@ void CodeWriter::writeArithmetic(string command) {
     }
 }
 
-// C_PUSH C_POPコマンドをアセンブリコードに変換し、それを書き込む
-void CodeWriter::writePushPop(string command, string segment, int index) {
+// C_PUSHコマンドをアセンブリコードに変換し、それを書き込む
+void CodeWriter::writePush(string command, string segment, int index) {
+    // レジスタへ値を読み込み
     if (segment == "constant") {
         file << "@" << index << endl;
         file << "D=A" << endl;
-        file << "@SP" << endl;
-        file << "A=M" << endl;
-        file << "M=D" << endl;
+    } else if (segment == "static") {
+        file << "@ST" << index << endl;
+        file << "D=M" << endl;
+    } else if (segment == "local") {
+        file << "@LCL" << endl;
+    } else if (segment == "argument") {
+        file << "@ARG" << endl;
+    } else if (segment == "this") {
+        file << "@THIS" << endl;
+    } else if (segment == "that") {
+        file << "@THAT" << endl;
+    } else if (segment == "pointer") {
+        file << "@R" << 3 + index << endl;
+        file << "D=M" << endl;
+    } else if (segment == "temp") {
+        file << "@R" << 5 + index << endl;
+        file << "D=M" << endl;
     }
+    if (segment == "local" || segment == "argument" || segment == "this"
+     || segment == "that") {
+        file << "D=M" << endl;
+        file << "@" << index << endl;
+        file << "A=D+A" << endl;
+        file << "D=M" << endl;
+    }
+
+    // スタックポインタに書き込み
+    file << "@SP" << endl;
+    file << "A=M" << endl;
+    file << "M=D" << endl;    
     // スタックポインタの位置を修正
     file << "@SP" << endl;
     file << "M=M+1" << endl;            
+}
+
+// C_POPコマンドをアセンブリコードに変換し、それを書き込む
+void CodeWriter::writePop(string command, string segment, int index) {
+    if (segment == "static") {
+        file << "@ST" << index << endl;
+    } else if (segment == "local") {
+        file << "@LCL" << endl;
+    } else if (segment == "argument") {
+        file << "@ARG" << endl;
+    } else if (segment == "this") {
+        file << "@THIS" << endl;
+    } else if (segment == "that") {
+        file << "@THAT" << endl;
+    } else if (segment == "pointer") {
+        file << "@R" << 3 + index << endl;        
+    } else if (segment == "temp") {
+        file << "@R" << 5 + index << endl;
+    }
+    if (segment == "local" || segment == "argument" || segment == "this"
+     || segment == "that") {
+        file << "D=M" << endl;
+        file << "@" << index << endl;
+        file << "A=D+A" << endl;        
+    }
+    file << "D=M" << endl;
+    file << "D=A" << endl;
+    file << "@R13" << endl;
+    file << "M=D" << endl;
+    file << "@SP" << endl;
+    file << "AM=M-1" << endl;
+    file << "D=M" << endl;
+    file << "@R13" << endl;
+    file << "A=M" << endl;
+    file << "M=D" << endl;
 }
