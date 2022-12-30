@@ -3,8 +3,6 @@
 
 CodeWriter::CodeWriter(string filename) {
     file.open(filename);
-    curScope = filename.substr(filename.find_last_of("/\\") + 1);
-    curScope = "";
     writeInit();
 }
 
@@ -18,10 +16,7 @@ void CodeWriter::writeInit() {
 }
 
 void CodeWriter::setFileName(string filename) {
-    file.close();
-    file.open(filename);
     curScope = filename.substr(filename.find_last_of("/\\") + 1);
-    curScope = "";
 }
 
 void CodeWriter::closeFile() {
@@ -262,8 +257,8 @@ void CodeWriter::writeCall(string functionName, int numArgs) {
     file << "@LCL" << endl;
     file << "M=D" << endl;              
     file << "@" << 5 + numArgs << endl;              
-    file << "D=D-A" << endl;          
-    file << "@ARG" << endl;              
+    file << "D=D-A" << endl;      
+    file << "@ARG" << endl;                  
     file << "M=D" << endl; // ARG = SP - numArgs - 5
 
     // サブルーチンへ移動

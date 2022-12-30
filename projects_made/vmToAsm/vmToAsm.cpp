@@ -49,10 +49,11 @@ int main() {
     CodeWriter writer(ofilename);
 
     // 比較するためのアドホックコード
-    reverse(ifilenames.begin(), ifilenames.end());
+    //reverse(ifilenames.begin(), ifilenames.end());
 
     for (string ifilename : ifilenames) {
     Parser parser(ifilename);
+    writer.setFileName(ifilename);
     cout << ifilename << endl;            
     while (true) {
         parser.advance();
