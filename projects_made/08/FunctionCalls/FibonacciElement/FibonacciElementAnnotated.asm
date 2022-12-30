@@ -2,7 +2,7 @@
 D=A
 @SP
 M=D
-@RETURN_LABEL_0
+@Sys.initRET0
 D=A
 @SP
 A=M
@@ -47,16 +47,16 @@ D=D-A
 M=D
 @Sys.init
 0;JMP
-(RETURN_LABEL_0)
+(Sys.initRET0)
 (Sys.init)
-@4
+@4 // push constant 4
 D=A
 @SP
 A=M
 M=D
 @SP
 M=M+1
-@RETURN_LABEL_1
+@Main.fibonacciRET1 // call Main.fibonacci 1
 D=A
 @SP
 A=M
@@ -99,14 +99,14 @@ M=D
 D=D-A
 @ARG
 M=D
-@Main.fibonacci
+@Main.fibonacci // Main.fibonacciにジャンプする
 0;JMP
-(RETURN_LABEL_1)
-(WHILE)
-@WHILE
+(Main.fibonacciRET1) // 帰る場所のラベル
+(fr$WHILE) // label WHILE
+@fr$WHILE // goto WHILE
 0;JMP
-(Main.fibonacci)
-@ARG
+(Main.fibonacci) // function Main.fibonacci 0
+@ARG // push argument 0
 D=M
 @0
 A=D+A
@@ -116,7 +116,7 @@ A=M
 M=D
 @SP
 M=M+1
-@2
+@2 // push constatnt 2
 D=A
 @SP
 A=M
@@ -151,11 +151,11 @@ M=M+1
 @SP
 AM=M-1
 D=M
-@IF_TRUE
+@c1$IF_TRUE
 D;JNE
-@IF_FALSE
+@c1$IF_FALSE
 0;JMP
-(IF_TRUE)
+(c1$IF_TRUE)
 @ARG
 D=M
 @0
@@ -223,7 +223,7 @@ M=D
 @R14
 A=M
 0;JMP
-(IF_FALSE)
+(c1$IF_FALSE)
 @ARG
 D=M
 @0
@@ -252,7 +252,7 @@ A=M
 M=M-D
 @SP
 M=M+1
-@RETURN_LABEL_2
+@Main.fibonacciRET2
 D=A
 @SP
 A=M
@@ -297,7 +297,7 @@ D=D-A
 M=D
 @Main.fibonacci
 0;JMP
-(RETURN_LABEL_2)
+(Main.fibonacciRET2)
 @ARG
 D=M
 @0
@@ -326,7 +326,7 @@ A=M
 M=M-D
 @SP
 M=M+1
-@RETURN_LABEL_3
+@Main.fibonacciRET3
 D=A
 @SP
 A=M
@@ -371,7 +371,7 @@ D=D-A
 M=D
 @Main.fibonacci
 0;JMP
-(RETURN_LABEL_3)
+(Main.fibonacciRET3)
 @SP
 M=M-1
 A=M

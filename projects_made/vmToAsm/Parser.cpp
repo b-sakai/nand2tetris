@@ -95,6 +95,7 @@ CommandType Parser::judgeCommandType(string aCommand) const {
         ret = C_RETURN;
     } else {
         cout << "should not called " << aCommand << endl;
+        ret = C_NONE;
     }
     cout << "judged : " << aCommand << endl;
     return ret;

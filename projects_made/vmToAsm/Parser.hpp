@@ -14,7 +14,7 @@ public:
     bool hasMoreCommands = true;
     // 現VMコマンドの種類
     // 算術コマンドはすべてC_ARITHMETICが返される
-    CommandType commandType;
+    CommandType commandType = C_NONE;
     // 現VMコマンド（文字列）
     string command;
     // 現VMコマンドの最初の引数

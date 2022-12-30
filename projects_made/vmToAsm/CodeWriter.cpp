@@ -3,20 +3,25 @@
 
 CodeWriter::CodeWriter(string filename) {
     file.open(filename);
+    curScope = filename.substr(filename.find_last_of("/\\") + 1);
+    curScope = "";
     writeInit();
 }
 
 // VMの初期化を行うアセンブリコードを書く。
 void CodeWriter::writeInit() {
-
+    file << "@256" << endl;
+    file << "D=A" << endl;
+    file << "@SP" << endl;
+    file << "M=D" << endl;
+    writeCall("Sys.init", 0);
 }
-
-
 
 void CodeWriter::setFileName(string filename) {
     file.close();
     file.open(filename);
-    writeInit();    
+    curScope = filename.substr(filename.find_last_of("/\\") + 1);
+    curScope = "";
 }
 
 void CodeWriter::closeFile() {
@@ -96,7 +101,7 @@ void CodeWriter::writePush(string command, string segment, int index) {
         file << "@" << index << endl;
         file << "D=A" << endl;
     } else if (segment == "static") {
-        file << "@ST" << index << endl;
+        file << "@" << curScope << "ST" << index << endl;
         file << "D=M" << endl;
     } else if (segment == "local") {
         file << "@LCL" << endl;
@@ -133,7 +138,7 @@ void CodeWriter::writePush(string command, string segment, int index) {
 // C_POPコマンドをアセンブリコードに変換し、それを書き込む
 void CodeWriter::writePop(string command, string segment, int index) {
     if (segment == "static") {
-        file << "@ST" << index << endl;
+        file << "@" << curScope << "ST" << index << endl;
     } else if (segment == "local") {
         file << "@LCL" << endl;
     } else if (segment == "argument") {
@@ -189,15 +194,162 @@ void CodeWriter::writeIf(string label) {
 
 // callコマンドを行うアセンブリコードを書く
 void CodeWriter::writeCall(string functionName, int numArgs) {
+    // 引数を渡す
+    // 呼び出し側の状態をスタック上に格納する push
+    // 呼び出された側で、ローカル変数のためのメモリ空間を用意する
+    // 呼び出された側のサブルーチンへ実行を移す（jump）
+    // 呼び出された側から呼び出し側へ値を返す
+    // リターン時に、呼び出されたが話のサブルーチンによって使われたメモリ空間を再利用できるようにする
+    // 呼び出し側の状態を復帰させる
+    // サブルーチンの次の場所に実行を移す（jump)
 
+    // 渡すアドレスはすでにスタックにプッシュされている
+
+    // リターンアドレスをプッシュ
+    string returnLabel = "RETURN_LABEL_" + to_string(returnLabelNum++);
+    file << "@" << returnLabel << endl;
+    file << "D=A" << endl;
+    // push d register
+    file << "@SP" << endl;
+    file << "A=M" << endl;
+    file << "M=D" << endl;
+    file << "@SP" << endl;
+    file << "M=M+1" << endl;
+
+    // 復元用のLCLアドレスをプッシュ
+    file << "@LCL" << endl;
+    file << "D=M" << endl;
+    // push d register
+    file << "@SP" << endl;
+    file << "A=M" << endl;
+    file << "M=D" << endl;
+    file << "@SP" << endl;
+    file << "M=M+1" << endl;
+
+    // 復元用のARGアドレスをプッシュ
+    file << "@ARG" << endl;
+    file << "D=M" << endl;
+    // push d register
+    file << "@SP" << endl;
+    file << "A=M" << endl;
+    file << "M=D" << endl;
+    file << "@SP" << endl;
+    file << "M=M+1" << endl;
+
+    // 復元用のTHISアドレスをプッシュ
+    file << "@THIS" << endl;
+    file << "D=M" << endl;  
+    // push d register
+    file << "@SP" << endl;
+    file << "A=M" << endl;
+    file << "M=D" << endl;
+    file << "@SP" << endl;
+    file << "M=M+1" << endl;      
+
+    // 復元用のTHATアドレスをプッシュ
+    file << "@THAT" << endl;
+    file << "D=M" << endl;  
+    // push d register
+    file << "@SP" << endl;
+    file << "A=M" << endl;
+    file << "M=D" << endl;
+    file << "@SP" << endl;
+    file << "M=M+1" << endl;          
+
+    // LCL, ARGアドレスを移動
+    file << "@SP" << endl;
+    file << "D=M" << endl;  
+    file << "@LCL" << endl;
+    file << "M=D" << endl;              
+    file << "@" << 5 + numArgs << endl;              
+    file << "D=D-A" << endl;          
+    file << "@ARG" << endl;              
+    file << "M=D" << endl; // ARG = SP - numArgs - 5
+
+    // サブルーチンへ移動
+    file << "@" << functionName << endl;
+    file << "0;JMP" << endl;
+    file << "(" << returnLabel << ")" << endl;
 }
 
 // returnコマンドを行うアセンブリコードを書く
 void CodeWriter::writeReturn() {
-
+    // 呼び出し元のリターンアドレス = *(LCL - 5)
+    // 呼び出し元のLCLアドレス = *(LCL - 4)
+    // 呼び出し元のARGアドレス = *(LCL - 3)
+    // 呼び出し元のTHISアドレス = *(LCL - 2)
+    // 呼び出し元のTHATアドレス = *(LCL - 1)
+    // 戻り値の格納されるアドレス = ARG-1
+    file << 
+"@LCL\n" // リターンアドレスの取得
+"D=M\n"
+"@R13\n" // R13 = FRAME = LCL
+"M=D\n"
+"@R13\n"
+"D=M\n"
+"@5\n"
+"D=D-A\n"
+"A=D\n"
+"D=M\n" // D = *(FRAME-5) = return-address
+"@R14\n"
+"M=D\n" // R14 = return-address
+"@SP\n"
+"AM=M-1\n"
+"D=M\n"
+"@ARG\n"
+"A=M\n"
+"M=D\n" // ARGの位置に戻り値をセットする
+"@ARG\n"
+"D=M\n"
+"@SP\n"
+"M=D+1\n" // SP = ARG+1
+"@R13\n"
+"D=M\n"
+"@1\n"
+"D=D-A\n"
+"A=D\n"
+"D=M\n"
+"@THAT\n"
+"M=D\n" // THAT = *(FRAME-1)
+"@R13\n"
+"D=M\n"
+"@2\n"
+"D=D-A\n"
+"A=D\n"
+"D=M\n"
+"@THIS\n"
+"M=D\n" // THIS = *(FRAME-2)
+"@R13\n"
+"D=M\n"
+"@3\n"
+"D=D-A\n"
+"A=D\n"
+"D=M\n"
+"@ARG\n"
+"M=D\n" // ARG= *(FRAME-3)
+"@R13\n"
+"D=M\n"
+"@4\n"
+"D=D-A\n"
+"A=D\n"
+"D=M\n"
+"@LCL\n"
+"M=D\n" // LCL = *(FRAME-4)
+"@R14\n"
+"A=M\n"
+"0;JMP" // GOTO return-address
+<< endl;
 }
 
 // functionコマンドを行うアセンブリコードを書く
 void CodeWriter::writeFunction(string functionName, int numLocals) {
-
+    file << "(" << functionName << ")" << endl;
+    for (int i=0; i<numLocals; i++) {
+        file << "D=0" << endl;
+        file << "@SP" << endl;
+        file << "A=M" << endl;
+        file << "M=D" << endl;
+        file << "@SP" << endl;
+        file << "M=M+1" << endl;
+    }
 }

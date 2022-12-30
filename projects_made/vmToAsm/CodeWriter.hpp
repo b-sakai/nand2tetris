@@ -8,7 +8,9 @@ using namespace std;
 class CodeWriter {
 public:
     ofstream file;
+    string curScope = "";
     int countForSymbol = 0;
+    int returnLabelNum = 0;
 
 public:
     // コンストラクタ
