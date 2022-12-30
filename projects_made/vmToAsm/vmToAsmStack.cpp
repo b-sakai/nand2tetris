@@ -18,17 +18,6 @@
 #include "CodeWriter.hpp"
 
 using namespace std;
-
-void writeTest() {
-    ofstream file("writeTest.txt");
-    vector<string> fruits = {"apple", "strawberry", "pear", "grape" };
-
-    for (const auto fruit : fruits) {
-        file << fruit << endl;
-    }
-}
-
-
 int main() {
     // 読み込むファイルのパスを指定
     string ifilename = "../07/MemoryAccess/PointerTest/PointerTest.vm";
@@ -57,11 +46,7 @@ int main() {
                 break;
         }
     }
-
-
-
-    writeTest();
-
+    writer.closeFile();
     return 0;
 }
 

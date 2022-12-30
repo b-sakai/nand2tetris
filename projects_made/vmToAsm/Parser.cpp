@@ -31,6 +31,7 @@ void Parser::advance() {
     if (getline(file, line)) { // 一行呼んで最終行のとき
     } else {
         hasMoreCommands = false;
+        file.close();
         cout << "last" << endl;
         return;
     }
@@ -62,9 +63,9 @@ void Parser::advance() {
     commandType = judgeCommandType(list[0]);
     arg1 = "";
     arg2 = -1;
-    if (list.size() >= 2) {
+    if (list.size() >= 2 && list[1] != "//" && list[1] != "") {
         arg1 = list[1];
-        if (list.size() >= 3) {
+        if (list.size() >= 3 && list[2] != "//" && list[2] != "") {
             arg2 = stoi(list[2]);
         }
     }
@@ -75,15 +76,27 @@ CommandType Parser::judgeCommandType(string aCommand) const {
     if (aCommand == "add" || aCommand == "sub" || aCommand == "neg" ||
         aCommand == "eq" || aCommand == "gt" || aCommand == "lt" ||
         aCommand == "and" || aCommand == "or" || aCommand == "not") {
-        cout << "judged : " << aCommand << endl;
         ret = C_ARITHMETIC;
     } else if (aCommand == "push") {
         ret = C_PUSH;
     } else if (aCommand == "pop") {
         ret = C_POP;
+    } else if (aCommand == "label") {
+        ret = C_LABEL;
+    } else if (aCommand == "goto") {
+        ret = C_GOTO;
+    } else if (aCommand == "if-goto") {
+        ret = C_IF;
+    } else if (aCommand == "function") {
+        ret = C_FUNCTION;
+    } else if (aCommand == "call") {
+        ret = C_CALL;
+    } else if (aCommand == "return") {
+        ret = C_RETURN;
     } else {
         cout << "should not called " << aCommand << endl;
     }
+    cout << "judged : " << aCommand << endl;
     return ret;
 }
 

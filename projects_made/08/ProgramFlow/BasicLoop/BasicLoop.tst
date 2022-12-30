@@ -3,7 +3,7 @@
 // by Nisan and Schocken, MIT Press.
 // File name: projects/08/ProgramFlow/BasicLoop/BasicLoop.tst
 
-load BasicLoop.asm,
+load BasicLoopWithoutInit.asm,
 output-file BasicLoop.out,
 compare-to BasicLoop.cmp,
 output-list RAM[0]%D1.6.1 RAM[256]%D1.6.1;

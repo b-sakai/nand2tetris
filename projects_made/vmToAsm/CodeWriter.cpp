@@ -3,11 +3,20 @@
 
 CodeWriter::CodeWriter(string filename) {
     file.open(filename);
+    writeInit();
 }
+
+// VMの初期化を行うアセンブリコードを書く。
+void CodeWriter::writeInit() {
+
+}
+
+
 
 void CodeWriter::setFileName(string filename) {
     file.close();
     file.open(filename);
+    writeInit();    
 }
 
 void CodeWriter::closeFile() {
@@ -154,4 +163,40 @@ void CodeWriter::writePop(string command, string segment, int index) {
     file << "@R13" << endl;
     file << "A=M" << endl;
     file << "M=D" << endl;
+}
+
+// Methods For Program Flow and Function (chapter 8)
+// labelコマンドを行うアセンブリコードを書く
+void CodeWriter::writeLabel(string label) {
+    file << "(fr$" << label << ")" << endl;
+}
+
+// gotoコマンドを行うアセンブリコードを書く
+void CodeWriter::writeGoto(string label) {
+
+}
+
+// if-gotoコマンドを行うアセンブリコードを書く
+void CodeWriter::writeIf(string label) {
+    cout << "writeIf : " << label << endl;
+    file << "@SP" << endl;
+    file << "AM=M-1" << endl;
+    file << "D=M" << endl;
+    file << "@fr$" << label << endl;
+    file << "D;JNE" << endl;
+}
+
+// callコマンドを行うアセンブリコードを書く
+void CodeWriter::writeCall(string functionName, int numArgs) {
+
+}
+
+// returnコマンドを行うアセンブリコードを書く
+void CodeWriter::writeReturn() {
+
+}
+
+// functionコマンドを行うアセンブリコードを書く
+void CodeWriter::writeFunction(string functionName, int numLocals) {
+
 }

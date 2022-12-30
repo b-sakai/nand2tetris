@@ -9,9 +9,9 @@
 // 7.1: Stack Arithmetic
 // 7.1.1 add, sub, neg, eq, gt, lt, and, or, not -> 単純に変換すれば良い
 // 7.1.2 push constant x -> 単純に変換すれば良い
-// Stage 2: Memory Access
 // Chapter 8
-// Stage 3: Parser Module, CodeWriter Module
+// 8.1: Program Flow
+// 8.2: Function Call
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -20,22 +20,11 @@
 #include "CodeWriter.hpp"
 
 using namespace std;
-
-void writeTest() {
-    ofstream file("writeTest.txt");
-    vector<string> fruits = {"apple", "strawberry", "pear", "grape" };
-
-    for (const auto fruit : fruits) {
-        file << fruit << endl;
-    }
-}
-
-
 int main() {
     // 読み込むファイルのパスを指定
-    string ifilename = "../07/MemoryAccess/PointerTest/PointerTest.vm";
+    string ifilename = "../08/ProgramFlow/BasicLoop/BasicLoop.vm";
     //string ofilename = "./output/SimpleAdd.asm";
-    string ofilename = "../07/MemoryAccess/PointerTest/PointerTest.asm";
+    string ofilename = "../08/ProgramFlow/BasicLoop/BasicLoop.asm";
 
     Parser parser(ifilename);
     CodeWriter writer(ofilename);    
@@ -55,15 +44,29 @@ int main() {
             case C_POP:
                 writer.writePop(cmd, parser.arg1, parser.arg2);
                 break;
+            case C_LABEL:
+                writer.writeLabel(parser.arg1);
+                break;
+            case C_GOTO:
+                writer.writeGoto(parser.arg1);
+                break;
+            case C_IF:
+                writer.writeIf(parser.arg1);
+                break;
+            case C_FUNCTION:
+                writer.writeFunction(parser.arg1, parser.arg2);
+                break;
+            case C_RETURN:
+                writer.writeReturn();
+                break;
+            case C_CALL:
+                writer.writeCall(parser.arg1, parser.arg2);
+                break;
             default:
                 break;
         }
     }
-
-
-
-    writeTest();
-
+    writer.closeFile();
     return 0;
 }
 
