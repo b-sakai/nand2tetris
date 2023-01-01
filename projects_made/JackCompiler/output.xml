@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TestScore>
+  <user>
+    <name>Tom</name>
+    <English>30</English>
+    <Math>90</Math>
+    <Science>80</Science>
+  </user>
+  <user>
+    <name>Alice</name>
+    <English>95</English>
+    <Math>85</Math>
+    <Science>75</Science>
+  </user>
+  <user>
+    <name>Bob</name>
+    <English>20</English>
+    <Math>35</Math>
+    <Science>30</Science>
+  </user>
+</TestScore>
