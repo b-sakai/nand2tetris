@@ -32,5 +32,7 @@ public:
     void advance();
     // スペース区切りでファイルを読み、tokensに格納する
     // コメントはここで取り除く
-    void advanceSpace();    
+    void advanceSpace();
+    // for debug
+    void log();
 };

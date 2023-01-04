@@ -41,8 +41,10 @@
 * APIのメンバ、メソッドをComplierEngine.cppに用意する
 * JackAnalyzer.cppからCompilerEngineを呼ぶ
 
-* Square.jackを変換してSquareT.xmlと比較する（出力ファイル名はMySquare.xmlなどが良い）
-* SquareGame.jackを変換してSquareT.xmlと比較する（出力ファイル名はMySquare.xmlなどが良い）
+* Square.jackを変換してSquare.xmlと比較する（出力ファイル名はMySquare.xmlなどが良い）
+* SquareGame.jackを変換してSquare.xmlと比較する（出力ファイル名はMySquare.xmlなどが良い）
 * ArrayTest/Main.jackを変換してMainT.xmlと比較する
+* ExpressionLessSquare/Main.jackを変換してMain.xmlと比較する
+* ExpressionLessSquare/Main.jackを変換してMain.xmlと比較する
 
 

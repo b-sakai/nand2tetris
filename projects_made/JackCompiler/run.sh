@@ -1,3 +1,2 @@
 #!/bin/bash
-g++ JackAnalyzer.cpp JackTokenizer.cpp --std=c++17 -w -lstdc++fs `xml2-config --cflags --libs`
-./a.out
+g++ JackAnalyzer.cpp CompilationEngine.cpp JackTokenizer.cpp --std=c++17 -w -lstdc++fs && ./a.out

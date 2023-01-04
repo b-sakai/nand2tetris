@@ -127,7 +127,7 @@ void JackTokenizer::advance() {
         tokenType = EMPTY;
     }
 
-    cout << tokenType << " :  「" << token << "」" << endl;
+    // cout << tokenType << " :  「" << token << "」" << endl;
 }
 
 // スペース区切りでファイルを読み、tokensに格納する
@@ -165,3 +165,20 @@ void JackTokenizer::advanceSpace() {
         return;
     }
  }
+
+// for debug
+void JackTokenizer::log() {
+    if (tokenType == KEYWORD) {
+        cout << "LLLLL keyword : " << keyword << endl;
+    } else if (tokenType == SYMBOL) {
+        cout << "LLLLL symbol : " << symbol << endl;
+    } else if (tokenType == IDENTIFIER) {
+        cout << "LLLLL identifier : " << identifier << endl;
+    } else if (tokenType == INT_CONST) {
+        cout << "LLLLL int_const : " << intVal << endl;
+    } else if (tokenType == STRING_CONST) {
+        cout << "LLLLL string_const : " << stringVal << endl;
+    } else {
+        cout << "LLLLL empty : " << endl;
+    }
+}
