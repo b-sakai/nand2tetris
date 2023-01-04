@@ -1,0 +1,23 @@
+enum Keyword {
+    CLASS,
+    METHOD,
+    FUNCTION,
+    CONSTRUCTOR,
+    INT,
+    BOOLEAN,
+    CHAR,
+    VOID,
+    VAR,
+    STATIC,
+    FIELD,
+    LET,
+    DO,
+    IF,
+    ELSE,
+    WHILE,
+    RETURN,
+    K_TRUE,
+    K_FALSE,
+    K_NULL,
+    THIS
+};
