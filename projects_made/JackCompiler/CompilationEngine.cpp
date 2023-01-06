@@ -8,6 +8,7 @@ CompilationEngine::CompilationEngine(string ifilename, string ofilename) {
     file.open(ofilename);
     tokenizer = make_unique<JackTokenizer>(ifilename);    
     symbolTable = make_unique<SymbolTable>();
+    vmWriter = make_unique<VMWriter>("./output.vm");
 }
 
 // tokenizerを進めて、次のトークンを取得する
@@ -129,15 +130,16 @@ void CompilationEngine::compileSubroutine() {
     advance();
     compileType();
     // subroutineName()
-    compileSubroutineName();
+    subroutineName = compileSubroutineName();
     // "("    
     advance();
     writeElement("symbol", tokenizer->symbol); // write "("
     // parameterList
     kind = S_ARG;
-    compileParameterList();
+    int parameterNum = compileParameterList();
     // ")"
     writeElement("symbol", tokenizer->symbol);  // write ")"
+    // TODO arg用の実装
 
     // compile subroutineBody
     compileSubroutineBody();
@@ -148,8 +150,9 @@ void CompilationEngine::compileSubroutine() {
 
 // パラメータのリストをコンパイルする
 // パラメータは空の可能性もある
-void CompilationEngine::compileParameterList() {
+int CompilationEngine::compileParameterList() {
     writeHeader("parameterList");
+    int parameterNum = 0;
     advance();
     while (!(tokenizer->tokenType == SYMBOL && tokenizer->symbol == ")")) { // ")"を見つけるまで
         if (tokenizer->tokenType == SYMBOL && tokenizer->symbol == ",") {
@@ -160,9 +163,11 @@ void CompilationEngine::compileParameterList() {
         compileType();
         // varName
         compileVarName();
+        parameterNum++;
         advance();
     }
     writeFooter("parameterList");
+    return parameterNum;
 }
 
 // subroutinBodyをコンパイルする
@@ -176,6 +181,10 @@ void CompilationEngine::compileSubroutineBody() {
     while (tokenizer->keyword == "var") {
         compileVarDec();
     }
+    string funcName = className + "." + subroutineName;
+    vmWriter->writeFunction(funcName, symbolTable->varCount(S_VAR));
+    subroutineName = "";
+
     // statements
     compileStatements();
     // "}"    
@@ -213,22 +222,23 @@ void CompilationEngine::compileVarDec() {
 void CompilationEngine::compileClassName() {
     advance();
     writeElement("identifier", tokenizer->identifier);
+    className = tokenizer->identifier;
 }
 
-void CompilationEngine::compileSubroutineName() {
+string CompilationEngine::compileSubroutineName() {
     advance();
-    writeElement("identifier", tokenizer->identifier);    
+    writeElement("identifier", tokenizer->identifier);
+    return tokenizer->identifier;
 }
 
-void CompilationEngine::compileVarName() {
+string CompilationEngine::compileVarName() {
     advance();
     if (kind == S_STATIC || kind == S_FIELD || kind == S_ARG || kind == S_VAR) {
         symbolTable->define(tokenizer->identifier, typeName, kind);
-    } else if (kind == S_LET) {
-        int curIndex = symbolTable->indexOf(tokenizer->identifier);
-        SymbolAttribute curKind = symbolTable->kindOf(tokenizer->identifier);
     }
-    writeElement("identifier", tokenizer->identifier);    
+    string varName = tokenizer->identifier;
+    writeElement("identifier", varName);
+    return varName;
 }
 
 // 一連の文をコンパイルする
@@ -268,7 +278,7 @@ void CompilationEngine::compileLet() {
     kind = S_LET;
     writeElement("keyword", tokenizer->keyword); // write "let"
     // varName
-    compileVarName();
+    string letVal = compileVarName();
 
     advance();
     if ((tokenizer->tokenType == SYMBOL && tokenizer->symbol == "[")) {
@@ -285,8 +295,11 @@ void CompilationEngine::compileLet() {
     // expression
     advance();
     compileExpression();
-    writeElement("symbol", tokenizer->symbol); // write ";"
+    SymbolAttribute letKind = symbolTable->kindOf(letVal);
+    Segment letSeg = symbolAttributeToSegment(letKind);
+    vmWriter->writePop(letSeg, symbolTable->indexOf(letVal));
 
+    writeElement("symbol", tokenizer->symbol); // write ";"
     writeFooter("letSatement");
 }
 
@@ -303,7 +316,11 @@ void CompilationEngine::compileIf() {
     advance();
     compileExpression();
     // ")"
+    int curIfIndex = ifIndex++;
     writeElement("symbol", tokenizer->symbol);
+    vmWriter->writeIf("IF_TRUE" + to_string(curIfIndex));
+    vmWriter->writeGoto("IF_FALSE" + to_string(curIfIndex));
+    vmWriter->writeLabel("IF_TRUE" + to_string(curIfIndex));
 
     // "{"
     advance();
@@ -314,6 +331,8 @@ void CompilationEngine::compileIf() {
     // "}"
     writeElement("symbol", tokenizer->symbol);
 
+    vmWriter->writeGoto("IF_END" + to_string(curIfIndex));
+    vmWriter->writeLabel("IF_FALSE" + to_string(curIfIndex));
     advance();
     if (tokenizer->tokenType == KEYWORD && tokenizer->keyword == "else") {
         // else
@@ -327,7 +346,7 @@ void CompilationEngine::compileIf() {
         // "}"
         writeElement("symbol", tokenizer->symbol);        
     }
-
+    vmWriter->writeLabel("IF_END" + to_string(curIfIndex));
     writeFooter("ifSatement");
 }
 
@@ -335,7 +354,9 @@ void CompilationEngine::compileIf() {
 void CompilationEngine::compileWhile() {
     writeHeader("whileStatement");
     // while
+    int curWhileIndex = whileIndex++;
     writeElement("keyword", tokenizer->keyword);
+    vmWriter->writeLabel("WHILE_EXP" + to_string(curWhileIndex));
     // "("
     advance();
     writeElement("symbol", tokenizer->symbol);
@@ -344,6 +365,8 @@ void CompilationEngine::compileWhile() {
     compileExpression();
     // ")"
     writeElement("symbol", tokenizer->symbol);
+    vmWriter->writeArithmetic(AC_NOT);
+    vmWriter->writeIf("WHILE_END" + to_string(curWhileIndex));
 
     // "{"
     advance();
@@ -352,7 +375,9 @@ void CompilationEngine::compileWhile() {
     advance();    
     compileStatements();
     // "}"
-     writeElement("symbol", tokenizer->symbol);    
+    writeElement("symbol", tokenizer->symbol); 
+    vmWriter->writeGoto("WHILE_EXP" + to_string(curWhileIndex));    
+    vmWriter->writeLabel("WHILE_END" + to_string(curWhileIndex));    
 
     writeFooter("whileStatement");
 }
@@ -369,6 +394,7 @@ void CompilationEngine::compileDo() {
     advance();
     writeElement("symbol", tokenizer->symbol);
     writeFooter("doSatement");
+    vmWriter->writePop(SEG_TEMP, 0);
 }
 
 // return文をコンパイルする
@@ -380,10 +406,13 @@ void CompilationEngine::compileReturn() {
     advance();
     if (!(tokenizer->tokenType == SYMBOL && tokenizer->symbol == ";")) {
         compileExpression();
+    } else {
+        vmWriter->writePush(SEG_CONST, 0);
     }
     // ";""
     writeElement("symbol", tokenizer->symbol);
     writeFooter("returnSatement");
+    vmWriter->writeReturn();
 }
 
 // 式をコンパイルする
@@ -395,9 +424,31 @@ void CompilationEngine::compileExpression() {
     while (op.count(tokenizer->symbol)) {
         // op
         writeElement("symbol", tokenizer->symbol);
+        string op_token = tokenizer->symbol;
         // term
         advance();
         compileTerm();
+        if (op_token == "+") {
+            vmWriter->writeArithmetic(AC_ADD);
+        } else if (op_token == "-") {
+            vmWriter->writeArithmetic(AC_SUB);
+        } else if (op_token == "*") {
+            vmWriter->writeCall("Math.multiply", 2);
+        } else if (op_token == "/") {
+            vmWriter->writeCall("Math.divide", 2);
+        } else if (op_token == "&") {
+            vmWriter->writeArithmetic(AC_AND);
+        } else if (op_token == "|") {
+            vmWriter->writeArithmetic(AC_OR);
+        } else if (op_token == "<") {
+            vmWriter->writeArithmetic(AC_LT);
+        } else if (op_token == ">") {
+            vmWriter->writeArithmetic(AC_GT);            
+        } else if (op_token == "=") {            
+            vmWriter->writeArithmetic(AC_EQ);                        
+        } else {
+            assert(false);
+        }
     }
     writeFooter("expression");    
 }
@@ -410,6 +461,7 @@ void CompilationEngine::compileTerm() {
     if (tokenType == INT_CONST) {
         // integerConstant
         writeElement("integerConstant", to_string(tokenizer->intVal));
+        vmWriter->writePush(SEG_CONST, tokenizer->intVal);
         advance();
     } else if (tokenType == STRING_CONST) {
         // stringConstant
@@ -418,6 +470,18 @@ void CompilationEngine::compileTerm() {
     } else if (tokenType == KEYWORD) {
         // keywordConstant
         writeElement("keyword", tokenizer->keyword);
+        if (tokenizer->keyword == "true") {
+            vmWriter->writePush(SEG_CONST, 0);
+            vmWriter->writeArithmetic(AC_NOT);
+        } else if (tokenizer->keyword == "false") {
+            vmWriter->writePush(SEG_CONST, 0);            
+        } else if (tokenizer->keyword == "null") {
+            vmWriter->writePush(SEG_CONST, 0);            
+        } else if (tokenizer->keyword == "this") {
+            vmWriter->writePush(SEG_POINTER, 0);            
+        } else {
+            assert(false);
+        }
         advance();
     } else if (tokenType == SYMBOL) {
         if (unaryOp.count(tokenizer->symbol)) {
@@ -438,6 +502,14 @@ void CompilationEngine::compileTerm() {
         // "[" -> expression
         // "." -> subroutineCall
         writeElement("identifier", tokenizer->identifier);
+        if (symbolTable->kindOf(tokenizer->identifier) != S_NONE) {
+            SymbolAttribute termKind = symbolTable->kindOf(tokenizer->identifier);
+            Segment termSeg = symbolAttributeToSegment(termKind);
+            vmWriter->writePush(termSeg, symbolTable->indexOf(tokenizer->identifier));
+        } else {
+            subroutineName = tokenizer->identifier;
+        }
+
         advance();
         if (tokenizer->tokenType == SYMBOL) {
             if (tokenizer->symbol == "[") {
@@ -452,6 +524,7 @@ void CompilationEngine::compileTerm() {
             } else if (tokenizer->symbol == ".") {
                 // "."
                 writeElement("symbol", tokenizer->symbol);
+                subroutineName += ".";
                 // compileSubroutineCall
                 advance();
                 compileSubroutineCall();
@@ -469,39 +542,46 @@ void CompilationEngine::compileSubroutineCall() {
 
     // subroutineName
     writeElement("identifier", tokenizer->identifier);
+    subroutineName += tokenizer->identifier;
 
     advance();
+    int parameterNum;
     if (tokenizer->symbol == "(") { // p1 : subroutineName(expressionList)
         // "("
         writeElement("symbol", tokenizer->symbol);
         // expressionList
         advance();
-        compileExpressionList();
+        parameterNum = compileExpressionList();
         // ")"
-        writeElement("symbol", tokenizer->symbol);        
+        writeElement("symbol", tokenizer->symbol);
     } else if (tokenizer->symbol == ".") { // p2,p3 : name.subroutineName(expressonList)
         // "."
         writeElement("symbol", tokenizer->symbol);        
         // "subroutineName"
-        compileSubroutineName();
+        string subName = compileSubroutineName();
+        subroutineName += "." + subName;
         // "("
         advance();
         writeElement("symbol", tokenizer->symbol);
         // expressionList
         advance();
-        compileExpressionList();        
+        parameterNum = compileExpressionList();        
         // ")"
-        writeElement("symbol", tokenizer->symbol);                   
+        writeElement("symbol", tokenizer->symbol);
     }
+    vmWriter->writeCall(subroutineName, parameterNum);
+    subroutineName = "";
 }
 
 // コンマで分離された式のリストをコンパイルする
-void CompilationEngine::compileExpressionList() {
+int CompilationEngine::compileExpressionList() {
     writeHeader("expressionList");
+    int expressionNum = 0;
     // (expression (, expression)* )?
     if (!(tokenizer->tokenType == SYMBOL && tokenizer->symbol == ")")) {
         // expression
         compileExpression();
+        expressionNum++;
         // (",",  expression)*
         while (tokenizer->tokenType == SYMBOL && tokenizer->symbol == ",") {
             // ","
@@ -509,17 +589,40 @@ void CompilationEngine::compileExpressionList() {
             // expression
             advance();
             compileExpression();
+            expressionNum++;
         }
     }
     writeFooter("expressionList");
+    return expressionNum;
 }
 
 void CompilationEngine::compileUnaryOp() {
     // unaryOp
     writeElement("symbol", tokenizer->symbol);
+    string unaryOpToken = tokenizer->symbol;
     // term
     advance();
     compileTerm();
+    if (unaryOpToken == "-") {
+        vmWriter->writeArithmetic(AC_NEG);
+    } else if (unaryOpToken == "~") {
+        vmWriter->writeArithmetic(AC_NOT);
+    } else {
+        assert(false);
+    }
+}
+
+Segment CompilationEngine::symbolAttributeToSegment(SymbolAttribute attr) {
+    switch (attr) {
+        case S_STATIC:
+            return SEG_STATIC;
+        case S_ARG:
+            return SEG_ARG;
+        case S_VAR:
+            return SEG_LOCAL;
+        default:
+            return SEG_TEMP;
+    }
 }
 
 // forDebug

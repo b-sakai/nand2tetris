@@ -3,15 +3,25 @@
 #include <memory>
 #include "JackTokenizer.hpp"
 #include "SymbolTable.hpp"
+#include "VMWriter.hpp"
 using namespace std;
 
 class CompilationEngine {
 public:
     ofstream file;
     unique_ptr<JackTokenizer> tokenizer;
+
     unique_ptr<SymbolTable> symbolTable;
     SymbolAttribute kind;
     string typeName;
+
+    unique_ptr<VMWriter> vmWriter;
+    string className;
+    string subroutineName;
+
+    int whileIndex = 0;
+    int ifIndex = 0;
+
     
 public:
     // コンストラクタ
@@ -34,12 +44,13 @@ protected:
     void compileClassVarDec();
     void compileType();
     void compileSubroutine();
-    void compileParameterList();
+    // パラメータの数を返す    
+    int compileParameterList();
     void compileSubroutineBody();    
     void compileVarDec();
     void compileClassName();
-    void compileSubroutineName();    
-    void compileVarName();
+    string compileSubroutineName();    
+    string compileVarName();
 
     // 文
     void compileStatements();       
@@ -53,10 +64,13 @@ protected:
     void compileExpression();
     void compileTerm();
     void compileSubroutineCall();
-    void compileExpressionList();
+    // expressionの数を返す
+    int compileExpressionList();
     void compileOp();
     void compileUnaryOp();    
     void compileKeywordConstant();
+
+    Segment symbolAttributeToSegment(SymbolAttribute attr);
 
     // forDebug
     void logF();

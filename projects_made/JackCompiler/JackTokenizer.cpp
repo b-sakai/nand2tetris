@@ -151,7 +151,7 @@ void JackTokenizer::advanceSpace() {
     if (tokens.size() >= 2 && tokens.substr(0, 2) == "/*") { // 複数行コメントのとき
         getline(file, line);
         line = trim(line);
-        while (line.substr(line.size()-2, 2) != "*/") {
+        while (line.size() < 2 || line.substr(line.size()-2, 2) != "*/") {
             getline(file, line);
             line = trim(line);
         }

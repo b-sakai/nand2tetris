@@ -17,7 +17,7 @@ void SymbolTable::define(string name, string type, SymbolAttribute kind) {
     SymbolInfo info;
     info.attribute = kind;
     info.typeName = type;
-    info.index = curCount+1;
+    info.index = curCount; // インデックスは0から始まるため (curCount-1) + 1 = curCount
     if (kind == S_STATIC || kind == S_FIELD) {
         // クラススコープのシンボルテーブルに定義する
         classScopeTable[name] = info;
