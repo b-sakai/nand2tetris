@@ -2,13 +2,17 @@
 #include <fstream>
 #include <memory>
 #include "JackTokenizer.hpp"
+#include "SymbolTable.hpp"
 using namespace std;
 
 class CompilationEngine {
 public:
     ofstream file;
     unique_ptr<JackTokenizer> tokenizer;
-
+    unique_ptr<SymbolTable> symbolTable;
+    SymbolAttribute kind;
+    string typeName;
+    
 public:
     // コンストラクタ
     CompilationEngine(string ifilename, string ofilename);

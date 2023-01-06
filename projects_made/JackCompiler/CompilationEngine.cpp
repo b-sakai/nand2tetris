@@ -7,6 +7,7 @@ using namespace std;
 CompilationEngine::CompilationEngine(string ifilename, string ofilename) {
     file.open(ofilename);
     tokenizer = make_unique<JackTokenizer>(ifilename);    
+    symbolTable = make_unique<SymbolTable>();
 }
 
 // tokenizerを進めて、次のトークンを取得する
@@ -22,13 +23,13 @@ void CompilationEngine::advance() {
 // xmlヘッダータグを書き込む
 void CompilationEngine::writeHeader(string tagName) {
     file << "<" << tagName << ">" << endl;
-    cout << "<" << tagName << ">" << endl;    
+    //cout << "<" << tagName << ">" << endl;    
 }
 
 // xmlフッタータグを書き込む
 void CompilationEngine::writeFooter(string tagName) {
     file << "</" << tagName << ">" << endl;
-    cout << "</" << tagName << ">" << endl;
+    //cout << "</" << tagName << ">" << endl;
 }
 
 // xml要素を書き込む
@@ -37,9 +38,9 @@ void CompilationEngine::writeElement(string tagName, string value) {
     file << value;
     file << " </" << tagName << ">" << endl;    
 
-    cout << "<" << tagName << "> ";
-    cout << value;
-    cout << " </" << tagName << ">" << endl;        
+    //cout << "<" << tagName << "> ";
+    //cout << value;
+    //cout << " </" << tagName << ">" << endl;        
 }
 
 // ファイル全体をコンパイルする
@@ -86,8 +87,14 @@ void CompilationEngine::compileClassVarDec() {
     writeHeader("classVarDec");
 
     // ("static" | "field")
+    if (tokenizer->keyword == "static") {
+        kind = S_STATIC;
+    } else if (tokenizer->keyword == "field") {
+        kind = S_FIELD;
+    }
     writeElement("keyword", tokenizer->keyword);
     // type
+    advance();
     compileType();
     // varName
     compileVarName();
@@ -104,10 +111,11 @@ void CompilationEngine::compileClassVarDec() {
 }
 
 void CompilationEngine::compileType() {
-    advance();
     if (tokenizer->tokenType == KEYWORD) { // "int" | "char" | "boolean" | "void"
+        typeName = tokenizer->keyword;
         writeElement("keyword", tokenizer->keyword);
     } else if (tokenizer->tokenType == IDENTIFIER) { // className
+        typeName = tokenizer->identifier;
         writeElement("identifier", tokenizer->identifier);
     }
 }
@@ -118,6 +126,7 @@ void CompilationEngine::compileSubroutine() {
     // "function" | "constructor" | "method"
     writeElement("keyword", tokenizer->keyword);
     // ("void" | type)
+    advance();
     compileType();
     // subroutineName()
     compileSubroutineName();
@@ -125,6 +134,7 @@ void CompilationEngine::compileSubroutine() {
     advance();
     writeElement("symbol", tokenizer->symbol); // write "("
     // parameterList
+    kind = S_ARG;
     compileParameterList();
     // ")"
     writeElement("symbol", tokenizer->symbol);  // write ")"
@@ -133,6 +143,7 @@ void CompilationEngine::compileSubroutine() {
     compileSubroutineBody();
 
     writeFooter("subroutineDec");
+    symbolTable->clearSubroutineScopeTable();
 }
 
 // パラメータのリストをコンパイルする
@@ -141,13 +152,14 @@ void CompilationEngine::compileParameterList() {
     writeHeader("parameterList");
     advance();
     while (!(tokenizer->tokenType == SYMBOL && tokenizer->symbol == ")")) { // ")"を見つけるまで
-        if (tokenizer->tokenType == KEYWORD) {
-            writeElement("keyword", tokenizer->keyword);
-        } else if (tokenizer->tokenType == IDENTIFIER) {
-            writeElement("identifier", tokenizer->identifier);
-        } else if (tokenizer->tokenType == SYMBOL) {
+        if (tokenizer->tokenType == SYMBOL && tokenizer->symbol == ",") {
             writeElement("symbol", tokenizer->symbol);
+            advance();
         }
+        // type
+        compileType();
+        // varName
+        compileVarName();
         advance();
     }
     writeFooter("parameterList");
@@ -175,8 +187,10 @@ void CompilationEngine::compileSubroutineBody() {
 void CompilationEngine::compileVarDec() {
     writeHeader("varDec");
     // "var"
+    kind = S_VAR;
     writeElement("keyword", tokenizer->keyword);
     // type
+    advance();
     compileType();
     // varName
     compileVarName();
@@ -192,6 +206,7 @@ void CompilationEngine::compileVarDec() {
     // ";"
     writeElement("symbol", tokenizer->symbol);
     advance();
+
     writeFooter("varDec");   
 }
 
@@ -207,6 +222,12 @@ void CompilationEngine::compileSubroutineName() {
 
 void CompilationEngine::compileVarName() {
     advance();
+    if (kind == S_STATIC || kind == S_FIELD || kind == S_ARG || kind == S_VAR) {
+        symbolTable->define(tokenizer->identifier, typeName, kind);
+    } else if (kind == S_LET) {
+        int curIndex = symbolTable->indexOf(tokenizer->identifier);
+        SymbolAttribute curKind = symbolTable->kindOf(tokenizer->identifier);
+    }
     writeElement("identifier", tokenizer->identifier);    
 }
 
@@ -244,6 +265,7 @@ void CompilationEngine::compileStatements() {
 void CompilationEngine::compileLet() {
     writeHeader("letSatement");
     // "let"
+    kind = S_LET;
     writeElement("keyword", tokenizer->keyword); // write "let"
     // varName
     compileVarName();
