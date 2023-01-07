@@ -72,6 +72,7 @@ protected:
     void compileUnaryOp();    
     void compileKeywordConstant();
 
+    void compileStringConstant(string sc);
     Segment symbolAttributeToSegment(SymbolAttribute attr);
 
     // forDebug

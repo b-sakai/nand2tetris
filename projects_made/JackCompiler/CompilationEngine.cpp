@@ -300,15 +300,39 @@ void CompilationEngine::compileLet() {
         // "]"
         writeElement("symbol", tokenizer->symbol);
         advance();
+        // push base address
+        SymbolAttribute letKind = symbolTable->kindOf(letVal);
+        Segment letSeg = symbolAttributeToSegment(letKind);
+        vmWriter->writePop(letSeg, symbolTable->indexOf(letVal));
+        // SP = letVal+i
+        vmWriter->writeArithmetic(AC_ADD);
+
+        // "="
+        writeElement("symbol", tokenizer->symbol); // write "="
+        // expression
+        advance();
+        compileExpression();
+        // = の先のexpressionの評価値をtempに格納
+        vmWriter->writePop(SEG_TEMP, 0);
+        // thatのベースアドレスをSP(letVal + i)に設定
+        vmWriter->writePop(SEG_POINTER, 1);
+        // 評価値を(SPに)push
+        vmWriter->writePush(SEG_TEMP, 0);
+        // that(letVal + i)に評価値を格納
+        vmWriter->writePop(SEG_THAT, 0);
+        //SymbolAttribute letKind = symbolTable->kindOf(letVal);
+        //Segment letSeg = symbolAttributeToSegment(letKind);
+        //vmWriter->writePop(letSeg, symbolTable->indexOf(letVal));        
+    } else {
+        // "="
+        writeElement("symbol", tokenizer->symbol); // write "="
+        // expression
+        advance();
+        compileExpression();
+        SymbolAttribute letKind = symbolTable->kindOf(letVal);
+        Segment letSeg = symbolAttributeToSegment(letKind);
+        vmWriter->writePop(letSeg, symbolTable->indexOf(letVal));
     }
-    // "="
-    writeElement("symbol", tokenizer->symbol); // write "="
-    // expression
-    advance();
-    compileExpression();
-    SymbolAttribute letKind = symbolTable->kindOf(letVal);
-    Segment letSeg = symbolAttributeToSegment(letKind);
-    vmWriter->writePop(letSeg, symbolTable->indexOf(letVal));
 
     writeElement("symbol", tokenizer->symbol); // write ";"
     writeFooter("letSatement");
@@ -480,7 +504,9 @@ void CompilationEngine::compileTerm() {
         advance();
     } else if (tokenType == STRING_CONST) {
         // stringConstant
-        writeElement("stringConstant", tokenizer->stringVal);
+        string stringConstant = tokenizer->stringVal;
+        writeElement("stringConstant", stringConstant);
+        compileStringConstant(stringConstant);
         advance();
     } else if (tokenType == KEYWORD) {
         // keywordConstant
@@ -535,6 +561,9 @@ void CompilationEngine::compileTerm() {
                 compileExpression();
                 // "]"
                 writeElement("symbol", tokenizer->symbol);
+                vmWriter->writeArithmetic(AC_ADD);
+                vmWriter->writePop(SEG_POINTER, 1);
+                vmWriter->writePop(SEG_THAT, 0);
                 advance();
             } else if (tokenizer->symbol == ".") {
                 // "."
@@ -641,6 +670,18 @@ void CompilationEngine::compileUnaryOp() {
         vmWriter->writeArithmetic(AC_NOT);
     } else {
         assert(false);
+    }
+}
+
+void CompilationEngine::compileStringConstant(string sc) {
+    // サイズをプッシュする
+    vmWriter->writePush(SEG_CONST, sc.size());
+    // String.newを呼び出す
+    vmWriter->writeCall("String.new", 1);
+    // 文字を１つずつプッシュして、appendCharを呼び出す
+    for (auto c : sc) {
+        vmWriter->writePush(SEG_CONST, c);
+        vmWriter->writeCall("String.appendChar", 2);
     }
 }
 
