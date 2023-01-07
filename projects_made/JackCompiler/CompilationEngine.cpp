@@ -8,7 +8,7 @@ CompilationEngine::CompilationEngine(string ifilename, string ofilename) {
     file.open(ofilename);
     tokenizer = make_unique<JackTokenizer>(ifilename);    
     symbolTable = make_unique<SymbolTable>();
-    vmWriter = make_unique<VMWriter>("./output.vm");
+    vmWriter = make_unique<VMWriter>("../11/ComplexArrays/Main.vm");
 }
 
 // tokenizerを進めて、次のトークンを取得する
@@ -311,7 +311,7 @@ void CompilationEngine::compileLet() {
         if (letSeg == SEG_ARG) {
             letIndex += argThisReserved;
         }
-        vmWriter->writePop(letSeg, letIndex);
+        vmWriter->writePush(letSeg, letIndex);
         // SP = letVal+i
         vmWriter->writeArithmetic(AC_ADD);
 
@@ -554,7 +554,11 @@ void CompilationEngine::compileTerm() {
         // "." -> subroutineCall
         writeElement("identifier", tokenizer->identifier);
         string instanceName = tokenizer->identifier;
-        if (symbolTable->kindOf(instanceName) != S_NONE) {
+        advance();
+
+        if (tokenizer->symbol == "[") { // "[" -> expression
+            // 下のif文で処理を行う
+        } else if (symbolTable->kindOf(instanceName) != S_NONE) {
             SymbolAttribute termKind = symbolTable->kindOf(instanceName);
             Segment termSeg = symbolAttributeToSegment(termKind);
             int termIndex = symbolTable->indexOf(instanceName);
@@ -566,7 +570,7 @@ void CompilationEngine::compileTerm() {
             subroutineName = tokenizer->identifier;
         }
 
-        advance();
+
         if (tokenizer->tokenType == SYMBOL) {
             if (tokenizer->symbol == "[") {
                 // "["
@@ -574,11 +578,18 @@ void CompilationEngine::compileTerm() {
                 // expression
                 advance();
                 compileExpression();
+                SymbolAttribute termKind = symbolTable->kindOf(instanceName);
+                Segment termSeg = symbolAttributeToSegment(termKind);
+                int termIndex = symbolTable->indexOf(instanceName);
+                if (termSeg == SEG_ARG) {
+                    termIndex += argThisReserved;
+                }
+                vmWriter->writePush(termSeg, termIndex);                
                 // "]"
                 writeElement("symbol", tokenizer->symbol);
                 vmWriter->writeArithmetic(AC_ADD);
                 vmWriter->writePop(SEG_POINTER, 1);
-                vmWriter->writePop(SEG_THAT, 0);
+                vmWriter->writePush(SEG_THAT, 0);
                 advance();
             } else if (tokenizer->symbol == ".") {
                 parameterNum = 0;
