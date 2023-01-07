@@ -76,8 +76,7 @@ string SymbolTable::typeOf(string name) const {
     } else if (subroutineScopeTable.count(name)) {
         return subroutineScopeTable.at(name).typeName;
     } else {
-        assert(false);
-        return "";
+        return "none";
     }
 }
 

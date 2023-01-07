@@ -126,6 +126,7 @@ void CompilationEngine::compileSubroutine() {
     writeHeader("subroutineDec");
     // "function" | "constructor" | "method"
     writeElement("keyword", tokenizer->keyword);
+    subroutineDeclare = tokenizer->keyword;
     // ("void" | type)
     advance();
     compileType();
@@ -184,6 +185,16 @@ void CompilationEngine::compileSubroutineBody() {
     string funcName = className + "." + subroutineName;
     vmWriter->writeFunction(funcName, symbolTable->varCount(S_VAR));
     subroutineName = "";
+
+
+    if (subroutineDeclare == "method") {
+        vmWriter->writePush(SEG_ARG, 0);
+        vmWriter->writePop(SEG_POINTER, 0);
+    } else if (subroutineDeclare == "constructor") {
+        vmWriter->writePush(SEG_CONST, symbolTable->varCount(S_FIELD));
+        vmWriter->writeCall("Memory.alloc", 1);
+        vmWriter->writePop(SEG_POINTER, 0);
+    }
 
     // statements
     compileStatements();
@@ -331,10 +342,10 @@ void CompilationEngine::compileIf() {
     // "}"
     writeElement("symbol", tokenizer->symbol);
 
-    vmWriter->writeGoto("IF_END" + to_string(curIfIndex));
-    vmWriter->writeLabel("IF_FALSE" + to_string(curIfIndex));
     advance();
     if (tokenizer->tokenType == KEYWORD && tokenizer->keyword == "else") {
+        vmWriter->writeGoto("IF_END" + to_string(curIfIndex));
+        vmWriter->writeLabel("IF_FALSE" + to_string(curIfIndex));
         // else
         writeElement("keyword", tokenizer->keyword);
         // "{"
@@ -345,8 +356,12 @@ void CompilationEngine::compileIf() {
         compileStatements();    
         // "}"
         writeElement("symbol", tokenizer->symbol);        
+        vmWriter->writeLabel("IF_END" + to_string(curIfIndex));
+    } else {
+        // else節がないときはこれだけあれば十分
+        vmWriter->writeLabel("IF_FALSE" + to_string(curIfIndex));
     }
-    vmWriter->writeLabel("IF_END" + to_string(curIfIndex));
+    
     writeFooter("ifSatement");
 }
 
@@ -545,16 +560,33 @@ void CompilationEngine::compileSubroutineCall() {
     subroutineName += tokenizer->identifier;
 
     advance();
-    int parameterNum;
+    int parameterNum = 0;
     if (tokenizer->symbol == "(") { // p1 : subroutineName(expressionList)
+        if (subroutineName.find('.') == string::npos) {
+            // ここに来るのは同じクラスのメソッドを読んだとき
+            subroutineName = className + "." + subroutineName; // クラス名で修飾
+            vmWriter->writePush(SEG_POINTER, 0); // 自身のアドレスをプッシュする
+            parameterNum++; // 引数の数をインクリメントする
+        }
         // "("
         writeElement("symbol", tokenizer->symbol);
         // expressionList
         advance();
-        parameterNum = compileExpressionList();
+        parameterNum += compileExpressionList();
         // ")"
         writeElement("symbol", tokenizer->symbol);
     } else if (tokenizer->symbol == ".") { // p2,p3 : name.subroutineName(expressonList)
+        if (symbolTable->typeOf(subroutineName) != "none") {
+            // インスタンス変数のときは
+            // 1. subroutineNameをクラス名に変更する
+            // 2. 引数として渡すので、アドレスをシンボルテーブルから検索してプッシュする
+            // 3. 引数が増えるのでparameterNumをインクリメントする
+            subroutineName = symbolTable->typeOf(subroutineName);
+            SymbolAttribute termKind = symbolTable->kindOf(tokenizer->identifier);
+            Segment termSeg = symbolAttributeToSegment(termKind);
+            vmWriter->writePush(termSeg, symbolTable->indexOf(tokenizer->identifier));            
+            parameterNum++;
+        }
         // "."
         writeElement("symbol", tokenizer->symbol);        
         // "subroutineName"
@@ -565,7 +597,7 @@ void CompilationEngine::compileSubroutineCall() {
         writeElement("symbol", tokenizer->symbol);
         // expressionList
         advance();
-        parameterNum = compileExpressionList();        
+        parameterNum += compileExpressionList();        
         // ")"
         writeElement("symbol", tokenizer->symbol);
     }
@@ -620,6 +652,8 @@ Segment CompilationEngine::symbolAttributeToSegment(SymbolAttribute attr) {
             return SEG_ARG;
         case S_VAR:
             return SEG_LOCAL;
+        case S_FIELD:
+            return SEG_THIS;             
         default:
             return SEG_TEMP;
     }

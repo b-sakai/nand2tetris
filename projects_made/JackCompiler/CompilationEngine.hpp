@@ -18,9 +18,11 @@ public:
     unique_ptr<VMWriter> vmWriter;
     string className;
     string subroutineName;
+    string subroutineDeclare;
 
     int whileIndex = 0;
     int ifIndex = 0;
+
 
     
 public:
