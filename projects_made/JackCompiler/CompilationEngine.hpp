@@ -19,9 +19,12 @@ public:
     string className;
     string subroutineName;
     string subroutineDeclare;
+    int parameterNum = 0;
 
     int whileIndex = 0;
     int ifIndex = 0;
+    // method && argのとき,thisがargument 0を使うので、argを１つずつずらすためのメンバ
+    int argThisReserved = 0;
 
 
     

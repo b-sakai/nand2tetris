@@ -225,9 +225,9 @@ push this 5
 eq
 not
 and
-if-goto IF_TRUE0
-goto IF_FALSE0
-label IF_TRUE0
+if-goto IF_TRUE4
+goto IF_FALSE4
+label IF_TRUE4
 push this 2
 pop this 5
 push constant 0
@@ -247,9 +247,9 @@ pop local 4
 push this 2
 push constant 4
 eq
-if-goto IF_TRUE1
-goto IF_FALSE1
-label IF_TRUE1
+if-goto IF_TRUE5
+goto IF_FALSE5
+label IF_TRUE5
 push local 1
 push local 4
 gt
@@ -260,34 +260,34 @@ or
 pop this 3
 push this 3
 not
-if-goto IF_TRUE2
-goto IF_FALSE2
-label IF_TRUE2
+if-goto IF_TRUE6
+goto IF_FALSE6
+label IF_TRUE6
 push local 4
 push local 1
 push constant 10
 add
 lt
-if-goto IF_TRUE3
-goto IF_FALSE3
-label IF_TRUE3
+if-goto IF_TRUE7
+goto IF_FALSE7
+label IF_TRUE7
 push constant 1
 neg
 pop local 0
-goto IF_END3
-label IF_FALSE3
+goto IF_END7
+label IF_FALSE7
 push local 3
 push local 2
 push constant 10
 sub
 gt
-if-goto IF_TRUE4
-goto IF_FALSE4
-label IF_TRUE4
+if-goto IF_TRUE8
+goto IF_FALSE8
+label IF_TRUE8
 push constant 1
 pop local 0
-label IF_FALSE4
-label IF_END3
+label IF_FALSE8
+label IF_END7
 push this 6
 push constant 2
 sub
@@ -307,12 +307,12 @@ pop temp 0
 push this 4
 call Output.printInt 1
 pop temp 0
-label IF_FALSE2
-label IF_FALSE1
+label IF_FALSE6
+label IF_FALSE5
 push this 1
 push local 0
 call Ball.bounce 2
 pop temp 0
-label IF_FALSE0
+label IF_FALSE4
 push constant 0
 return

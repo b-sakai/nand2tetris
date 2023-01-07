@@ -71,12 +71,19 @@ void CompilationEngine::compileClass() {
     while (tokenizer->tokenType == KEYWORD) {
         string keyword = tokenizer->keyword;
         if (subroutineKeyword.count(keyword)) {
+            if (keyword == "method") {
+                argThisReserved = 1;
+            } else {
+                argThisReserved = 0;
+            }
             compileSubroutine();
         }
         if (classVarDecKeyword.count(keyword)) {
             compileClassVarDec();
         }
         advance();
+        whileIndex = 0;
+        ifIndex = 0;
     }
     // "}"
     writeElement("symbol", tokenizer->symbol);
@@ -273,10 +280,7 @@ void CompilationEngine::compileStatements() {
         advance();
     } else if (tokenizer->keyword == "if") {
         compileIf();
-        // else節を先読み失敗して失敗している場合はadvance()しない
-        if (tokenizer->tokenType == SYMBOL) {
-            advance();
-        }
+        // else節を先読みしているためadvance()しない
     }
     }
     writeFooter("statements");
@@ -303,7 +307,11 @@ void CompilationEngine::compileLet() {
         // push base address
         SymbolAttribute letKind = symbolTable->kindOf(letVal);
         Segment letSeg = symbolAttributeToSegment(letKind);
-        vmWriter->writePop(letSeg, symbolTable->indexOf(letVal));
+        int letIndex = symbolTable->indexOf(letVal);
+        if (letSeg == SEG_ARG) {
+            letIndex += argThisReserved;
+        }
+        vmWriter->writePop(letSeg, letIndex);
         // SP = letVal+i
         vmWriter->writeArithmetic(AC_ADD);
 
@@ -320,9 +328,6 @@ void CompilationEngine::compileLet() {
         vmWriter->writePush(SEG_TEMP, 0);
         // that(letVal + i)に評価値を格納
         vmWriter->writePop(SEG_THAT, 0);
-        //SymbolAttribute letKind = symbolTable->kindOf(letVal);
-        //Segment letSeg = symbolAttributeToSegment(letKind);
-        //vmWriter->writePop(letSeg, symbolTable->indexOf(letVal));        
     } else {
         // "="
         writeElement("symbol", tokenizer->symbol); // write "="
@@ -331,7 +336,11 @@ void CompilationEngine::compileLet() {
         compileExpression();
         SymbolAttribute letKind = symbolTable->kindOf(letVal);
         Segment letSeg = symbolAttributeToSegment(letKind);
-        vmWriter->writePop(letSeg, symbolTable->indexOf(letVal));
+        int letIndex = symbolTable->indexOf(letVal);
+        if (letSeg == SEG_ARG) {
+            letIndex += argThisReserved;
+        }        
+        vmWriter->writePop(letSeg, letIndex);
     }
 
     writeElement("symbol", tokenizer->symbol); // write ";"
@@ -379,13 +388,13 @@ void CompilationEngine::compileIf() {
         advance();
         compileStatements();    
         // "}"
-        writeElement("symbol", tokenizer->symbol);        
-        vmWriter->writeLabel("IF_END" + to_string(curIfIndex));
+        writeElement("symbol", tokenizer->symbol);
+        advance();
+        vmWriter->writeLabel("IF_END" + to_string(curIfIndex));        
     } else {
-        // else節がないときはこれだけあれば十分
         vmWriter->writeLabel("IF_FALSE" + to_string(curIfIndex));
     }
-    
+        
     writeFooter("ifSatement");
 }
 
@@ -428,6 +437,7 @@ void CompilationEngine::compileDo() {
     writeElement("keyword", tokenizer->keyword);
     // subroutineCall
     advance();
+    parameterNum = 0;
     compileSubroutineCall();
     // ";"
     advance();
@@ -543,10 +553,15 @@ void CompilationEngine::compileTerm() {
         // "[" -> expression
         // "." -> subroutineCall
         writeElement("identifier", tokenizer->identifier);
-        if (symbolTable->kindOf(tokenizer->identifier) != S_NONE) {
-            SymbolAttribute termKind = symbolTable->kindOf(tokenizer->identifier);
+        string instanceName = tokenizer->identifier;
+        if (symbolTable->kindOf(instanceName) != S_NONE) {
+            SymbolAttribute termKind = symbolTable->kindOf(instanceName);
             Segment termSeg = symbolAttributeToSegment(termKind);
-            vmWriter->writePush(termSeg, symbolTable->indexOf(tokenizer->identifier));
+            int termIndex = symbolTable->indexOf(instanceName);
+            if (termSeg == SEG_ARG) {
+                termIndex += argThisReserved;
+            }
+            vmWriter->writePush(termSeg, termIndex);
         } else {
             subroutineName = tokenizer->identifier;
         }
@@ -566,6 +581,11 @@ void CompilationEngine::compileTerm() {
                 vmWriter->writePop(SEG_THAT, 0);
                 advance();
             } else if (tokenizer->symbol == ".") {
+                parameterNum = 0;
+                if (symbolTable->kindOf(instanceName) != S_NONE) {                
+                    subroutineName = symbolTable->typeOf(instanceName);
+                    parameterNum++;
+                }
                 // "."
                 writeElement("symbol", tokenizer->symbol);
                 subroutineName += ".";
@@ -589,10 +609,9 @@ void CompilationEngine::compileSubroutineCall() {
     subroutineName += tokenizer->identifier;
 
     advance();
-    int parameterNum = 0;
     if (tokenizer->symbol == "(") { // p1 : subroutineName(expressionList)
         if (subroutineName.find('.') == string::npos) {
-            // ここに来るのは同じクラスのメソッドを読んだとき
+            // ここに来るのは同じクラスのメソッドを呼んだとき
             subroutineName = className + "." + subroutineName; // クラス名で修飾
             vmWriter->writePush(SEG_POINTER, 0); // 自身のアドレスをプッシュする
             parameterNum++; // 引数の数をインクリメントする
@@ -613,7 +632,11 @@ void CompilationEngine::compileSubroutineCall() {
             subroutineName = symbolTable->typeOf(subroutineName);
             SymbolAttribute termKind = symbolTable->kindOf(tokenizer->identifier);
             Segment termSeg = symbolAttributeToSegment(termKind);
-            vmWriter->writePush(termSeg, symbolTable->indexOf(tokenizer->identifier));            
+            int termIndex = symbolTable->indexOf(tokenizer->identifier);
+            if (termSeg == SEG_ARG) {
+                termIndex += argThisReserved;
+            }
+            vmWriter->writePush(termSeg, termIndex);
             parameterNum++;
         }
         // "."
