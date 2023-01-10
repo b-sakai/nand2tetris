@@ -1,3 +1,7 @@
+## chapter 1-5
+
+* projects_made/1などの各チャプターのディレクトリに各モジュールの*.hdlファイルに実装がある
+
 ## chapter 6 assembler
 
 * .asm -> .hackの変換を行う
@@ -26,3 +30,13 @@
 * vmToAsm.cpp : メインプログラム。
 * vmToAsmStack.cpp : 7章までの内容に対応した変換プログラム
 
+## chapter 9
+
+* 特に実装はせず
+
+## chapter 10, 11 JackCompiler
+
+* .jack -> .vmのコンパイルを行う
+* projects_made/JackCompiler10/以下にxmlファイルを出力するまで行うプログラム軍がある
+* projects_made/JackCompiler/以下に完全にコンパイルを行うプログラム群がある
+* 詳しい説明は各ディレクトリを参照
