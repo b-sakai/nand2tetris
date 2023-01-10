@@ -1,14 +1,20 @@
 #include <cassert>
+#include <sstream>
+#include <istream>
 #include <unordered_set>
 #include "CompilationEngine.hpp"
 using namespace std;
 
 // コンストラクタ
-CompilationEngine::CompilationEngine(string ifilename, string ofilename) {
-    file.open(ofilename);
-    tokenizer = make_unique<JackTokenizer>(ifilename);    
+CompilationEngine::CompilationEngine(string ifilename) {
+    tokenizer = make_unique<JackTokenizer>(ifilename);
     symbolTable = make_unique<SymbolTable>();
-    vmWriter = make_unique<VMWriter>("../11/ComplexArrays/Main.vm");
+
+    // ifilenameからofilenameを取得する（.jack -> .vm)
+    string ofilename = ifilename.substr(0, ifilename.size()-4) + "vm";
+    cout << ofilename << endl;
+
+    vmWriter = make_unique<VMWriter>(ofilename);
 }
 
 // tokenizerを進めて、次のトークンを取得する
@@ -21,29 +27,6 @@ void CompilationEngine::advance() {
     }
 }
 
-// xmlヘッダータグを書き込む
-void CompilationEngine::writeHeader(string tagName) {
-    file << "<" << tagName << ">" << endl;
-    //cout << "<" << tagName << ">" << endl;    
-}
-
-// xmlフッタータグを書き込む
-void CompilationEngine::writeFooter(string tagName) {
-    file << "</" << tagName << ">" << endl;
-    //cout << "</" << tagName << ">" << endl;
-}
-
-// xml要素を書き込む
-void CompilationEngine::writeElement(string tagName, string value) {
-    file << "<" << tagName << "> ";
-    file << value;
-    file << " </" << tagName << ">" << endl;    
-
-    //cout << "<" << tagName << "> ";
-    //cout << value;
-    //cout << " </" << tagName << ">" << endl;        
-}
-
 // ファイル全体をコンパイルする
 void CompilationEngine::compile() {
     // 全てのファイルはクラス定義から始めるため、まずクラスをコンパイルする
@@ -52,15 +35,11 @@ void CompilationEngine::compile() {
 
 // クラスをコンパイルする
 void CompilationEngine::compileClass() {
-    writeHeader("class");
-
     // class
     advance();
-    writeElement("keyword", tokenizer->keyword);
     // class name
     compileClassName();
     advance(); // {
-    writeElement("symbol", tokenizer->symbol); // write "{"
 
      // この次はclassVarDecかsubroutineDecのどちらか
     unordered_set<string> subroutineKeyword = 
@@ -85,22 +64,17 @@ void CompilationEngine::compileClass() {
         whileIndex = 0;
         ifIndex = 0;
     }
-    // "}"
-    writeElement("symbol", tokenizer->symbol);
-    writeFooter("class");
+    // }
 }
 
 // スタティック宣言 | フィールド宣言をコンパイルする
 void CompilationEngine::compileClassVarDec() {
-    writeHeader("classVarDec");
-
     // ("static" | "field")
     if (tokenizer->keyword == "static") {
         kind = S_STATIC;
     } else if (tokenizer->keyword == "field") {
         kind = S_FIELD;
     }
-    writeElement("keyword", tokenizer->keyword);
     // type
     advance();
     compileType();
@@ -109,30 +83,23 @@ void CompilationEngine::compileClassVarDec() {
     // (',' varName)*
     advance();
     while (tokenizer->symbol == ",") {
-        writeElement("symbol", tokenizer->symbol);
         compileVarName();
         advance();
     }
     // ";"
-    writeElement("symbol", tokenizer->symbol); // write ";""
-    writeFooter("classVarDec");
 }
 
 void CompilationEngine::compileType() {
     if (tokenizer->tokenType == KEYWORD) { // "int" | "char" | "boolean" | "void"
         typeName = tokenizer->keyword;
-        writeElement("keyword", tokenizer->keyword);
     } else if (tokenizer->tokenType == IDENTIFIER) { // className
         typeName = tokenizer->identifier;
-        writeElement("identifier", tokenizer->identifier);
     }
 }
 
 // メソッド、ファンクション、コンストラクタをコンパイルする
 void CompilationEngine::compileSubroutine() {
-    writeHeader("subroutineDec");
     // "function" | "constructor" | "method"
-    writeElement("keyword", tokenizer->keyword);
     subroutineDeclare = tokenizer->keyword;
     // ("void" | type)
     advance();
@@ -141,30 +108,23 @@ void CompilationEngine::compileSubroutine() {
     subroutineName = compileSubroutineName();
     // "("    
     advance();
-    writeElement("symbol", tokenizer->symbol); // write "("
     // parameterList
     kind = S_ARG;
     int parameterNum = compileParameterList();
     // ")"
-    writeElement("symbol", tokenizer->symbol);  // write ")"
-    // TODO arg用の実装
 
     // compile subroutineBody
     compileSubroutineBody();
-
-    writeFooter("subroutineDec");
     symbolTable->clearSubroutineScopeTable();
 }
 
 // パラメータのリストをコンパイルする
 // パラメータは空の可能性もある
 int CompilationEngine::compileParameterList() {
-    writeHeader("parameterList");
     int parameterNum = 0;
     advance();
     while (!(tokenizer->tokenType == SYMBOL && tokenizer->symbol == ")")) { // ")"を見つけるまで
         if (tokenizer->tokenType == SYMBOL && tokenizer->symbol == ",") {
-            writeElement("symbol", tokenizer->symbol);
             advance();
         }
         // type
@@ -174,16 +134,13 @@ int CompilationEngine::compileParameterList() {
         parameterNum++;
         advance();
     }
-    writeFooter("parameterList");
     return parameterNum;
 }
 
 // subroutinBodyをコンパイルする
 void CompilationEngine::compileSubroutineBody() {
-    writeHeader("subroutineBody");
     // "{"
     advance();
-    writeElement("symbol", tokenizer->symbol); // write "{"
     // varDec*
     advance();
     while (tokenizer->keyword == "var") {
@@ -192,7 +149,6 @@ void CompilationEngine::compileSubroutineBody() {
     string funcName = className + "." + subroutineName;
     vmWriter->writeFunction(funcName, symbolTable->varCount(S_VAR));
     subroutineName = "";
-
 
     if (subroutineDeclare == "method") {
         vmWriter->writePush(SEG_ARG, 0);
@@ -206,16 +162,12 @@ void CompilationEngine::compileSubroutineBody() {
     // statements
     compileStatements();
     // "}"    
-    writeElement("symbol", tokenizer->symbol); // write "}"
-    writeFooter("subroutineBody");
 }    
 
 // var宣言をコンパイルする
 void CompilationEngine::compileVarDec() {
-    writeHeader("varDec");
     // "var"
     kind = S_VAR;
-    writeElement("keyword", tokenizer->keyword);
     // type
     advance();
     compileType();
@@ -225,27 +177,21 @@ void CompilationEngine::compileVarDec() {
     advance();
     while (!(tokenizer->tokenType == SYMBOL && tokenizer->symbol == ";")) {
         // ","
-        writeElement("symbol", ",");
         // varName
         compileVarName();
         advance();
     }
     // ";"
-    writeElement("symbol", tokenizer->symbol);
     advance();
-
-    writeFooter("varDec");   
 }
 
 void CompilationEngine::compileClassName() {
     advance();
-    writeElement("identifier", tokenizer->identifier);
     className = tokenizer->identifier;
 }
 
 string CompilationEngine::compileSubroutineName() {
     advance();
-    writeElement("identifier", tokenizer->identifier);
     return tokenizer->identifier;
 }
 
@@ -255,14 +201,12 @@ string CompilationEngine::compileVarName() {
         symbolTable->define(tokenizer->identifier, typeName, kind);
     }
     string varName = tokenizer->identifier;
-    writeElement("identifier", varName);
     return varName;
 }
 
 // 一連の文をコンパイルする
 // 波括弧"{}"は含まない
 void CompilationEngine::compileStatements() {
-    writeHeader("statements");
     // do | let | while | return | ifのどれか
     assert(tokenizer->tokenType == KEYWORD);
     while(tokenizer->tokenType == KEYWORD) {
@@ -283,26 +227,21 @@ void CompilationEngine::compileStatements() {
         // else節を先読みしているためadvance()しない
     }
     }
-    writeFooter("statements");
 }
 
 // let文をコンパイルする
 void CompilationEngine::compileLet() {
-    writeHeader("letSatement");
     // "let"
     kind = S_LET;
-    writeElement("keyword", tokenizer->keyword); // write "let"
     // varName
     string letVal = compileVarName();
 
     advance();
     if ((tokenizer->tokenType == SYMBOL && tokenizer->symbol == "[")) {
         // "["
-        writeElement("symbol", tokenizer->symbol);
         advance();    
         compileExpression();
         // "]"
-        writeElement("symbol", tokenizer->symbol);
         advance();
         // push base address
         SymbolAttribute letKind = symbolTable->kindOf(letVal);
@@ -316,7 +255,6 @@ void CompilationEngine::compileLet() {
         vmWriter->writeArithmetic(AC_ADD);
 
         // "="
-        writeElement("symbol", tokenizer->symbol); // write "="
         // expression
         advance();
         compileExpression();
@@ -330,7 +268,6 @@ void CompilationEngine::compileLet() {
         vmWriter->writePop(SEG_THAT, 0);
     } else {
         // "="
-        writeElement("symbol", tokenizer->symbol); // write "="
         // expression
         advance();
         compileExpression();
@@ -342,115 +279,87 @@ void CompilationEngine::compileLet() {
         }        
         vmWriter->writePop(letSeg, letIndex);
     }
-
-    writeElement("symbol", tokenizer->symbol); // write ";"
-    writeFooter("letSatement");
 }
 
 // if文をコンパイルする
 // else文を伴う可能性がある
 void CompilationEngine::compileIf() {
-    writeHeader("ifSatement");
     // if
-    writeElement("keyword", tokenizer->keyword);    
     // "("
     advance();
-    writeElement("symbol", tokenizer->symbol);
     // expression
     advance();
     compileExpression();
     // ")"
     int curIfIndex = ifIndex++;
-    writeElement("symbol", tokenizer->symbol);
     vmWriter->writeIf("IF_TRUE" + to_string(curIfIndex));
     vmWriter->writeGoto("IF_FALSE" + to_string(curIfIndex));
     vmWriter->writeLabel("IF_TRUE" + to_string(curIfIndex));
 
     // "{"
     advance();
-    writeElement("symbol", tokenizer->symbol);    
     // statements
     advance();
     compileStatements();
     // "}"
-    writeElement("symbol", tokenizer->symbol);
 
     advance();
     if (tokenizer->tokenType == KEYWORD && tokenizer->keyword == "else") {
         vmWriter->writeGoto("IF_END" + to_string(curIfIndex));
         vmWriter->writeLabel("IF_FALSE" + to_string(curIfIndex));
         // else
-        writeElement("keyword", tokenizer->keyword);
         // "{"
         advance();
-        writeElement("symbol", tokenizer->symbol);
         // statements
         advance();
         compileStatements();    
         // "}"
-        writeElement("symbol", tokenizer->symbol);
         advance();
         vmWriter->writeLabel("IF_END" + to_string(curIfIndex));        
     } else {
         vmWriter->writeLabel("IF_FALSE" + to_string(curIfIndex));
     }
-        
-    writeFooter("ifSatement");
 }
 
 // while文をコンパイルする
 void CompilationEngine::compileWhile() {
-    writeHeader("whileStatement");
     // while
     int curWhileIndex = whileIndex++;
-    writeElement("keyword", tokenizer->keyword);
     vmWriter->writeLabel("WHILE_EXP" + to_string(curWhileIndex));
     // "("
     advance();
-    writeElement("symbol", tokenizer->symbol);
     // expression
     advance();
     compileExpression();
     // ")"
-    writeElement("symbol", tokenizer->symbol);
     vmWriter->writeArithmetic(AC_NOT);
     vmWriter->writeIf("WHILE_END" + to_string(curWhileIndex));
 
     // "{"
     advance();
-    writeElement("symbol", tokenizer->symbol);
     // statements
     advance();    
     compileStatements();
     // "}"
-    writeElement("symbol", tokenizer->symbol); 
     vmWriter->writeGoto("WHILE_EXP" + to_string(curWhileIndex));    
     vmWriter->writeLabel("WHILE_END" + to_string(curWhileIndex));    
-
-    writeFooter("whileStatement");
 }
 
 // do文をコンパイルする
 void CompilationEngine::compileDo() {
-    writeHeader("doSatement");
     // "do"
-    writeElement("keyword", tokenizer->keyword);
     // subroutineCall
     advance();
     parameterNum = 0;
     compileSubroutineCall();
     // ";"
     advance();
-    writeElement("symbol", tokenizer->symbol);
-    writeFooter("doSatement");
     vmWriter->writePop(SEG_TEMP, 0);
 }
 
 // return文をコンパイルする
 void CompilationEngine::compileReturn() {
-    writeHeader("returnSatement");
     // "return"
-    writeElement("keyword", tokenizer->keyword);
 
     advance();
     if (!(tokenizer->tokenType == SYMBOL && tokenizer->symbol == ";")) {
@@ -459,20 +368,16 @@ void CompilationEngine::compileReturn() {
         vmWriter->writePush(SEG_CONST, 0);
     }
     // ";""
-    writeElement("symbol", tokenizer->symbol);
-    writeFooter("returnSatement");
     vmWriter->writeReturn();
 }
 
 // 式をコンパイルする
 void CompilationEngine::compileExpression() {
-    writeHeader("expression");
     // term
     compileTerm();
     unordered_set<string> op = {"+", "-", "*", "/", "&", "|", "<", ">", "="};
     while (op.count(tokenizer->symbol)) {
         // op
-        writeElement("symbol", tokenizer->symbol);
         string op_token = tokenizer->symbol;
         // term
         advance();
@@ -499,28 +404,23 @@ void CompilationEngine::compileExpression() {
             assert(false);
         }
     }
-    writeFooter("expression");    
 }
 
 // termをコンパイルする
 void CompilationEngine::compileTerm() {
-    writeHeader("term");
     unordered_set<string> unaryOp = {"-", "~"};    
     TokenType tokenType = tokenizer->tokenType;
     if (tokenType == INT_CONST) {
         // integerConstant
-        writeElement("integerConstant", to_string(tokenizer->intVal));
         vmWriter->writePush(SEG_CONST, tokenizer->intVal);
         advance();
     } else if (tokenType == STRING_CONST) {
         // stringConstant
         string stringConstant = tokenizer->stringVal;
-        writeElement("stringConstant", stringConstant);
         compileStringConstant(stringConstant);
         advance();
     } else if (tokenType == KEYWORD) {
         // keywordConstant
-        writeElement("keyword", tokenizer->keyword);
         if (tokenizer->keyword == "true") {
             vmWriter->writePush(SEG_CONST, 0);
             vmWriter->writeArithmetic(AC_NOT);
@@ -541,18 +441,15 @@ void CompilationEngine::compileTerm() {
         } else if (tokenizer->symbol == "(") {
             // "(" expression ")"
             // "("
-            writeElement("symbol", tokenizer->symbol);                
             // expression
             advance();
             compileExpression();
             // ")"
-            writeElement("symbol", tokenizer->symbol);
             advance();
         }
     } else if (tokenType == IDENTIFIER) {
         // "[" -> expression
         // "." -> subroutineCall
-        writeElement("identifier", tokenizer->identifier);
         string instanceName = tokenizer->identifier;
         advance();
 
@@ -574,7 +471,6 @@ void CompilationEngine::compileTerm() {
         if (tokenizer->tokenType == SYMBOL) {
             if (tokenizer->symbol == "[") {
                 // "["
-                writeElement("symbol", tokenizer->symbol);
                 // expression
                 advance();
                 compileExpression();
@@ -586,7 +482,6 @@ void CompilationEngine::compileTerm() {
                 }
                 vmWriter->writePush(termSeg, termIndex);                
                 // "]"
-                writeElement("symbol", tokenizer->symbol);
                 vmWriter->writeArithmetic(AC_ADD);
                 vmWriter->writePop(SEG_POINTER, 1);
                 vmWriter->writePush(SEG_THAT, 0);
@@ -598,7 +493,6 @@ void CompilationEngine::compileTerm() {
                     parameterNum++;
                 }
                 // "."
-                writeElement("symbol", tokenizer->symbol);
                 subroutineName += ".";
                 // compileSubroutineCall
                 advance();
@@ -607,7 +501,6 @@ void CompilationEngine::compileTerm() {
             }
         }
     }
-    writeFooter("term");
 }
 
 void CompilationEngine::compileSubroutineCall() {
@@ -616,7 +509,6 @@ void CompilationEngine::compileSubroutineCall() {
     // p3 : varName.subroutineName(expressionList)
 
     // subroutineName
-    writeElement("identifier", tokenizer->identifier);
     subroutineName += tokenizer->identifier;
 
     advance();
@@ -628,12 +520,10 @@ void CompilationEngine::compileSubroutineCall() {
             parameterNum++; // 引数の数をインクリメントする
         }
         // "("
-        writeElement("symbol", tokenizer->symbol);
         // expressionList
         advance();
         parameterNum += compileExpressionList();
         // ")"
-        writeElement("symbol", tokenizer->symbol);
     } else if (tokenizer->symbol == ".") { // p2,p3 : name.subroutineName(expressonList)
         if (symbolTable->typeOf(subroutineName) != "none") {
             // インスタンス変数のときは
@@ -651,18 +541,15 @@ void CompilationEngine::compileSubroutineCall() {
             parameterNum++;
         }
         // "."
-        writeElement("symbol", tokenizer->symbol);        
         // "subroutineName"
         string subName = compileSubroutineName();
         subroutineName += "." + subName;
         // "("
         advance();
-        writeElement("symbol", tokenizer->symbol);
         // expressionList
         advance();
         parameterNum += compileExpressionList();        
         // ")"
-        writeElement("symbol", tokenizer->symbol);
     }
     vmWriter->writeCall(subroutineName, parameterNum);
     subroutineName = "";
@@ -670,7 +557,6 @@ void CompilationEngine::compileSubroutineCall() {
 
 // コンマで分離された式のリストをコンパイルする
 int CompilationEngine::compileExpressionList() {
-    writeHeader("expressionList");
     int expressionNum = 0;
     // (expression (, expression)* )?
     if (!(tokenizer->tokenType == SYMBOL && tokenizer->symbol == ")")) {
@@ -680,20 +566,17 @@ int CompilationEngine::compileExpressionList() {
         // (",",  expression)*
         while (tokenizer->tokenType == SYMBOL && tokenizer->symbol == ",") {
             // ","
-            writeElement("symbol", tokenizer->symbol);
             // expression
             advance();
             compileExpression();
             expressionNum++;
         }
     }
-    writeFooter("expressionList");
     return expressionNum;
 }
 
 void CompilationEngine::compileUnaryOp() {
     // unaryOp
-    writeElement("symbol", tokenizer->symbol);
     string unaryOpToken = tokenizer->symbol;
     // term
     advance();
@@ -732,9 +615,4 @@ Segment CompilationEngine::symbolAttributeToSegment(SymbolAttribute attr) {
         default:
             return SEG_TEMP;
     }
-}
-
-// forDebug
-void CompilationEngine::logF() {
-    file << tokenizer->toString() << endl;
 }

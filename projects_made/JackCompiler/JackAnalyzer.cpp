@@ -6,10 +6,7 @@
 
 int main() {
     string ifilename = "../11/ComplexArrays/Main.jack";
-    //string ifilename = "../10/test.jack";
-    string ofilename = "./output.xml";
-    //string ofilename = "../10/ArrayTest/MyMain.xml";
-    CompilationEngine engine(ifilename, ofilename);
+    CompilationEngine engine(ifilename);
     engine.compile();
     return 0;
 }
