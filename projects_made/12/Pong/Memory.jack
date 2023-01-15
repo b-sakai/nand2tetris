@@ -1,0 +1,154 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/12/Memory.jack
+
+/**
+ * This library provides two services: direct access to the computer's main
+ * memory (RAM), and allocation and recycling of memory blocks. The Hack RAM
+ * consists of 32,768 words, each holding a 16-bit binary number.
+ */ 
+class Memory {
+    static Array memory, freeList;
+    static int heapBase, heapLength;
+    static int LENGTH, NEXT, BLOCK_SIZE;
+    
+
+    /** Initializes the class. */
+    function void init() {
+        let memory = 0;
+        let heapBase = 2048;
+        let heapLength = 16384 - 2048;
+
+
+        let LENGTH = 0;
+        let NEXT = 1;
+        let BLOCK_SIZE = -1;
+
+        let freeList = heapBase; // freeList = heapBase
+        let freeList[LENGTH] = heapLength; // freeList.next = null
+        let freeList[NEXT] = null; // freeList.next = null
+
+        return;
+    }
+
+    /** Returns the RAM value at the given address. */
+    function int peek(int address) {
+        return memory[address];
+    }
+
+    /** Sets the RAM value at the given address to the given value. */
+    function void poke(int address, int value) {
+        let memory[address] = value;
+        return;
+    }
+
+    /** Finds an available RAM block of the given size and returns
+
+     *  a reference to its base address. */
+    function int alloc(int size) {
+        var Array priorSeg, segment, block, nextBlock;
+
+        // search freeList
+        let segment = Memory.searchBestFit(size);
+        if (segment = null) {
+            return 1;
+        }
+
+        let block = segment + 1;
+        // set nextBlock
+        if (segment[LENGTH] > (size + 3)) { // 0 = block size, 1 = next link, 2~ = value
+            // split segment to block and nextBlock (segment = block + nextblock)
+            let nextBlock = segment + size + 1;
+            let nextBlock[NEXT] = segment[NEXT];
+            let nextBlock[LENGTH] = segment[LENGTH] - size - 1;
+            let block[BLOCK_SIZE] = size + 1; // block[-1] = size + 1
+        } else { 
+            // segment = block
+            let nextBlock = segment[NEXT];
+            let block[BLOCK_SIZE] = segment[LENGTH]; // block[-1] = segment.length
+        }
+
+        // update freeList
+        if (segment = freeList) {
+            let freeList = nextBlock;
+        } else {
+            let segment[NEXT] = nextBlock;
+        }
+
+        return block;
+    }
+
+    // prior
+    function Array searchBestFit(int size) {
+        var Array bestBlock, curBlock;
+        var int bestSize, curSize;
+
+        // initialization
+        let bestBlock = null; // if there is not bestBlock return null
+        let curBlock = freeList;
+        let bestSize = heapLength;
+
+        // search freeList
+        while (~(curBlock = null)) {
+            let curSize = curBlock[LENGTH] - 1; // available size
+            if (~(curSize < size) & (curSize < bestSize)) { // size <= curSize & cursize < bestSize
+                let bestBlock = curBlock;
+                let bestSize = curSize;
+            }
+            let curBlock = curBlock[NEXT];
+        }
+        return bestBlock;
+    }
+
+    /** De-allocates the given object (cast as an array) by making
+     *  it available for future allocations. */
+    function void deAlloc(Array object) {
+        var int size;
+        var Array priorBlock, segment, nextBlock;
+
+        let size = object[BLOCK_SIZE];
+        let segment= object - 1;
+
+        let priorBlock = Memory.findPriorFree(segment);
+
+        // add segment to freeList
+        if (priorBlock = null) {
+            // add segment as first block
+            let segment[LENGTH] = size;
+            let segment[NEXT] = freeList;
+            let freeList = segment;
+        } else {
+            if ((priorBlock + priorBlock[LENGTH]) = segment) { // when can combine priorBlock and segment
+                // combine priorBlock with segment
+                let priorBlock[LENGTH] = priorBlock[LENGTH] + size;
+                let segment = priorBlock;
+            } else {
+                // append segment after priorBlock
+                let segment[LENGTH] = size;
+                let segment[NEXT] = priorBlock[NEXT];
+                let priorBlock[NEXT] = segment;
+            }
+        }
+        if (segment + segment[LENGTH] = segment[NEXT]) { // when can combine segment and nextBlock
+            let nextBlock = segment[NEXT];
+            let segment[LENGTH] = segment[LENGTH] + nextBlock[LENGTH];
+            let segment[NEXT] = nextBlock[NEXT];
+        }
+        return;
+    }
+
+    // find free block prior to segment
+    function Array findPriorFree(Array segment) {
+        var Array block;
+        if (freeList > segment) {
+            return null;
+        }
+
+        let block = freeList;
+        while ((block[NEXT] < segment) & ~(block[NEXT] = null)) {
+            let block = block[NEXT];
+        }
+        return block;
+    }
+}
