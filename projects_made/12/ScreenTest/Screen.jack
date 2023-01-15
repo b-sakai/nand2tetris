@@ -80,7 +80,7 @@ class Screen {
     function void drawLine(int x1, int y1, int x2, int y2) {
         // classify right or left
         if (y1 = y2) {
-            Screen.drawRightLine(Math.min(x1, x2), Math.min(y1, y2), y1);
+            do Screen.drawRightLine(Math.min(x1, x2), Math.max(x1, x2), y1);
             return;
         }
         if (~(x1 > x2)) {
