@@ -45,3 +45,9 @@
 * projects_made/JackCompiler10/以下にxmlファイルを出力するまで行うプログラム軍がある
 * projects_made/JackCompiler/以下に完全にコンパイルを行うプログラム群がある
 * 詳しい説明は各ディレクトリを参照
+
+## chapter 12
+
+* OS（標準ライブラリ）に必要なjackの実装を行う
+* 全部で8個
+* 詳しい説明は./projects_made/12以下を参照
